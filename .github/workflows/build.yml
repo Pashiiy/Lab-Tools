@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 jobs:
+  # Each matrix leg runs on its own runner with a fresh workspace — no shared release/ folder.
   release:
     name: Build & publish (${{ matrix.platform }})
     strategy:
@@ -44,6 +45,20 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run build
 
+      - name: Prepare clean release output directory (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          rm -rf release
+          mkdir -p release
+
+      - name: Prepare clean release output directory (Windows)
+        if: matrix.platform == 'win'
+        shell: cmd
+        run: |
+          if exist release rmdir /s /q release
+          mkdir release
+
       - name: Package and publish to GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lab-tools-mac-${{ github.ref_name }}
-          path: release/mac/*.dmg
+          path: release/*.dmg
           if-no-files-found: error
           retention-days: 30
 
@@ -63,6 +78,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lab-tools-win-${{ github.ref_name }}
-          path: release/win/*.exe
+          path: release/*.exe
           if-no-files-found: error
           retention-days: 30
