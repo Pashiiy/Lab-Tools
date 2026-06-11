@@ -69,12 +69,14 @@
       "!dist/**/*.map",
       "electron/**/*"
     ],
-    "publish": {
-      "provider": "github",
-      "owner": "Pashiiy",
-      "repo": "Lab-Tools",
-      "releaseType": "release"
-    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Pashiiy",
+        "repo": "Lab-Tools",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "category": "public.app-category.medical",
       "icon": "public/icon.icns",
