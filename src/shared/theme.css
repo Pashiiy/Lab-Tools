@@ -1,0 +1,232 @@
+/**
+ * Lab Tools — global design system
+ * Source of truth: Gel Quantification (gel-quantification.css)
+ *
+ * Tokens use --lt-* prefix. Tool-scoped aliases (--gq-*, --shell-*)
+ * are defined here so every surface shares one palette.
+ */
+
+html[data-theme='dark'] {
+  /* Surfaces */
+  --lt-bg: #0f0f12;
+  --lt-panel: #16161c;
+  --lt-border: rgba(255, 255, 255, 0.1);
+  --lt-hover: rgba(255, 255, 255, 0.04);
+  --lt-active: rgba(255, 255, 255, 0.07);
+  --lt-input-bg: #0f0f12;
+
+  /* Typography */
+  --lt-text: #e8e8ec;
+  --lt-text-muted: #888894;
+  --lt-text-faint: rgba(255, 255, 255, 0.45);
+
+  /* Accent (gel quant green) */
+  --lt-accent: #2e8b57;
+  --lt-accent-text: #7dcea0;
+  --lt-accent-subtle: rgba(46, 139, 87, 0.12);
+  --lt-accent-hover-border: rgba(46, 139, 87, 0.45);
+  --lt-accent-hover-bg: rgba(46, 139, 87, 0.08);
+
+  /* Semantic */
+  --lt-danger: #e05c5c;
+  --lt-danger-subtle: rgba(224, 92, 92, 0.12);
+  --lt-positive: #50c878;
+  --lt-negative: #c45c5c;
+  --lt-negative-subtle: rgba(224, 92, 92, 0.1);
+
+  /* Data / ROI (gel quant) */
+  --lt-inner: #4a90d9;
+  --lt-outer: #f5a623;
+
+  /* Brand (logo) */
+  --lt-brand-blue: #4b9cd3;
+  --lt-brand-navy: #13294b;
+
+  /* Layout scale (8px grid) */
+  --lt-radius-sm: 4px;
+  --lt-radius-md: 6px;
+  --lt-radius-lg: 14px;
+  --lt-space-1: 4px;
+  --lt-space-2: 8px;
+  --lt-space-3: 12px;
+  --lt-space-4: 16px;
+
+  /* Elevation */
+  --lt-shadow-1: 0 12px 40px rgba(0, 0, 0, 0.22);
+  --lt-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --lt-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* Chart / overlay (shared defaults) */
+  --lt-overlay-text: #ffffff;
+  --lt-chart-tick: var(--lt-text-muted);
+  --lt-chart-label: var(--lt-text-muted);
+  --lt-chart-text: #cccccc;
+  --lt-chart-grid: rgba(255, 255, 255, 0.06);
+  --lt-chart-tooltip-bg: #1e1e28;
+  --lt-chart-tooltip-border: var(--lt-border);
+
+  /* Shell */
+  --shell-bg: var(--lt-bg);
+  --shell-nav-bg: var(--lt-panel);
+  --shell-border: var(--lt-border);
+  --shell-text: var(--lt-text-muted);
+  --shell-text-muted: var(--lt-text-muted);
+  --shell-text-active: var(--lt-text);
+  --shell-hover: var(--lt-hover);
+  --shell-active: var(--lt-active);
+  --shell-tab-active-bg: var(--lt-bg);
+  --shell-tab-indicator: var(--lt-accent);
+  --shell-card-bg: var(--lt-panel);
+  --shell-card-hover: #1c1c22;
+
+  /* Gel quant aliases */
+  --gq-bg: var(--lt-bg);
+  --gq-panel: var(--lt-panel);
+  --gq-border: var(--lt-border);
+  --gq-text: var(--lt-text);
+  --gq-text-muted: var(--lt-text-muted);
+  --gq-accent: var(--lt-accent);
+  --gq-accent-text: var(--lt-accent-text);
+  --gq-inner: var(--lt-inner);
+  --gq-outer: var(--lt-outer);
+  --gq-hover: var(--lt-hover);
+  --gq-input-bg: var(--lt-input-bg);
+}
+
+html[data-theme='light'] {
+  --lt-bg: #f0f0f4;
+  --lt-panel: #ffffff;
+  --lt-border: rgba(0, 0, 0, 0.1);
+  --lt-hover: rgba(0, 0, 0, 0.04);
+  --lt-active: rgba(0, 0, 0, 0.06);
+  --lt-input-bg: #ffffff;
+
+  --lt-text: #1a1a1e;
+  --lt-text-muted: #52525b;
+  --lt-text-faint: rgba(26, 26, 30, 0.55);
+
+  --lt-accent: #1e6b45;
+  --lt-accent-text: #1e6b45;
+  --lt-accent-subtle: rgba(30, 107, 69, 0.1);
+  --lt-accent-hover-border: rgba(30, 107, 69, 0.35);
+  --lt-accent-hover-bg: rgba(30, 107, 69, 0.08);
+
+  --lt-danger: #dc2626;
+  --lt-danger-subtle: rgba(220, 38, 38, 0.08);
+  --lt-positive: #2d9f5d;
+  --lt-negative: #c45c5c;
+  --lt-negative-subtle: rgba(224, 92, 92, 0.1);
+
+  --lt-inner: #2563eb;
+  --lt-outer: #d97706;
+
+  --lt-brand-blue: #4b9cd3;
+  --lt-brand-navy: #13294b;
+
+  --lt-radius-sm: 4px;
+  --lt-radius-md: 6px;
+  --lt-radius-lg: 14px;
+  --lt-space-1: 4px;
+  --lt-space-2: 8px;
+  --lt-space-3: 12px;
+  --lt-space-4: 16px;
+
+  --lt-shadow-1: 0 12px 40px rgba(0, 0, 0, 0.12);
+  --lt-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --lt-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  --lt-overlay-text: #ffffff;
+  --lt-chart-tick: var(--lt-text-muted);
+  --lt-chart-label: #71717a;
+  --lt-chart-text: #3f3f46;
+  --lt-chart-grid: rgba(0, 0, 0, 0.08);
+  --lt-chart-tooltip-bg: var(--lt-panel);
+  --lt-chart-tooltip-border: var(--lt-border);
+
+  --shell-bg: var(--lt-bg);
+  --shell-nav-bg: var(--lt-panel);
+  --shell-border: var(--lt-border);
+  --shell-text: var(--lt-text-muted);
+  --shell-text-muted: var(--lt-text-muted);
+  --shell-text-active: var(--lt-text);
+  --shell-hover: var(--lt-hover);
+  --shell-active: var(--lt-active);
+  --shell-tab-active-bg: var(--lt-bg);
+  --shell-tab-indicator: var(--lt-accent);
+  --shell-card-bg: var(--lt-panel);
+  --shell-card-hover: #f8f8fa;
+
+  --gq-bg: var(--lt-bg);
+  --gq-panel: var(--lt-panel);
+  --gq-border: var(--lt-border);
+  --gq-text: var(--lt-text);
+  --gq-text-muted: var(--lt-text-muted);
+  --gq-accent: var(--lt-accent);
+  --gq-accent-text: var(--lt-accent-text);
+  --gq-inner: var(--lt-inner);
+  --gq-outer: var(--lt-outer);
+  --gq-hover: var(--lt-hover);
+  --gq-input-bg: var(--lt-input-bg);
+}
+
+/* Shared button pattern (matches .gq-btn) */
+.lt-btn {
+  padding: 7px 10px;
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-sm);
+  background: transparent;
+  color: var(--lt-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, filter 0.12s;
+}
+
+.lt-btn:hover:not(:disabled) {
+  background: var(--lt-hover);
+}
+
+.lt-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lt-btn--primary {
+  background: var(--lt-accent);
+  border-color: var(--lt-accent);
+  color: #fff;
+}
+
+.lt-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: var(--lt-accent);
+}
+
+.lt-btn--active {
+  border-color: var(--lt-accent);
+  color: var(--lt-accent-text);
+  background: var(--lt-hover);
+}
+
+.lt-btn--danger {
+  color: var(--lt-danger);
+  border-color: rgba(224, 92, 92, 0.4);
+}
+
+/* Shared input pattern */
+.lt-input {
+  background: var(--lt-input-bg);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-sm);
+  color: var(--lt-text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  padding: 4px 6px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.lt-input:focus {
+  border-color: var(--lt-accent);
+}

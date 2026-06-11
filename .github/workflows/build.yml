@@ -1,0 +1,111 @@
+name: Build Lab Tools
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-vite:
+    name: Vite production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  build-mac:
+    name: macOS DMG
+    runs-on: macos-latest
+    needs: build-vite
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate macOS icons
+        run: npm run generate-icons
+
+      - name: Package macOS DMG
+        run: npx electron-builder --mac --config.directories.output=release/mac
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-tools-mac
+          path: |
+            release/mac/*.dmg
+            release/mac/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  build-win:
+    name: Windows NSIS installer
+    runs-on: windows-latest
+    needs: build-vite
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate Windows icons
+        run: npm run generate-icons
+
+      - name: Package Windows installer
+        run: npx electron-builder --win --config.directories.output=release/win
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-tools-win
+          path: release/win/*.exe
+          if-no-files-found: error
+          retention-days: 14
