@@ -2,21 +2,31 @@
   "name": "lab-tools",
   "private": true,
   "version": "1.0.0",
+  "description": "Lab Tools — endpoint analysis, colony counting, and gel quantification for microbiology labs",
+  "author": "Bloom Lab",
   "type": "module",
   "main": "electron/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Pashiiy/Lab-Tools.git"
+  },
+  "homepage": "https://github.com/Pashiiy/Lab-Tools",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "generate-icons": "node scripts/generate-icons.mjs",
-    "preelectron:build:mac": "npm run generate-icons",
-    "preelectron:build:win": "npm run generate-icons",
-    "preelectron:build:all": "npm run generate-icons",
+    "predist": "npm run generate-icons",
+    "predist:win": "npm run generate-icons",
+    "predist:mac": "npm run generate-icons",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build:mac": "npm run build && electron-builder --mac --config.directories.output=release/mac",
-    "electron:build:win": "npm run build && electron-builder --win --config.directories.output=release/win",
-    "electron:build:all": "npm run build && electron-builder --mac --config.directories.output=release/mac && electron-builder --win --config.directories.output=release/win"
+    "electron:build:mac": "npm run build && npm run dist:mac",
+    "electron:build:win": "npm run build && npm run dist:win",
+    "electron:build:all": "npm run build && electron-builder --mac --win"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
@@ -54,29 +64,28 @@
       "buildResources": "build"
     },
     "files": [
+      "!node_modules",
       "dist/**/*",
       "!dist/**/*.map",
-      "electron/**/*",
-      "!electron/**/*.map",
-      "!**/.git/**",
-      "!**/.vite/**",
-      "!**/node_modules/**",
-      "!src/**",
-      "!scripts/**"
+      "electron/**/*"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "Pashiiy",
+      "repo": "Lab-Tools",
+      "releaseType": "release"
+    },
     "mac": {
       "category": "public.app-category.medical",
       "icon": "public/icon.icns",
       "target": "dmg",
-      "electronLanguages": [
-        "en"
-      ],
-      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+      "electronLanguages": ["en"],
+      "artifactName": "mac/${productName}-${version}-${arch}.${ext}"
     },
     "win": {
       "icon": "public/icon.ico",
       "target": "nsis",
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "win/${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

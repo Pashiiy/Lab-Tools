@@ -1,21 +1,36 @@
-name: Build Lab Tools
+name: Release Lab Tools
 
 on:
   push:
-    branches: [main, master]
-    tags: ['v*']
-  pull_request:
-    branches: [main, master]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
-jobs:
-  build-vite:
-    name: Vite production build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+permissions:
+  contents: write
 
-      - uses: actions/setup-node@v4
+jobs:
+  release:
+    name: Build & publish (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            dist_script: dist:mac
+          - os: windows-latest
+            platform: win
+            dist_script: dist:win
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -24,88 +39,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build renderer
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Build renderer (Vite)
         run: npm run build
 
-      - name: Upload dist artifact
+      - name: Package and publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run ${{ matrix.dist_script }} -- --publish always
+
+      - name: Upload macOS DMG artifact
+        if: matrix.platform == 'mac'
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist/
-          retention-days: 7
-
-  build-mac:
-    name: macOS DMG
-    runs-on: macos-latest
-    needs: build-vite
-    if: github.event_name != 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Generate macOS icons
-        run: npm run generate-icons
-
-      - name: Package macOS DMG
-        run: npx electron-builder --mac --config.directories.output=release/mac
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: lab-tools-mac
-          path: |
-            release/mac/*.dmg
-            release/mac/*.zip
+          name: lab-tools-mac-${{ github.ref_name }}
+          path: release/mac/*.dmg
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
-  build-win:
-    name: Windows NSIS installer
-    runs-on: windows-latest
-    needs: build-vite
-    if: github.event_name != 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Generate Windows icons
-        run: npm run generate-icons
-
-      - name: Package Windows installer
-        run: npx electron-builder --win --config.directories.output=release/win
-
-      - name: Upload Windows artifacts
+      - name: Upload Windows installer artifact
+        if: matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
-          name: lab-tools-win
+          name: lab-tools-win-${{ github.ref_name }}
           path: release/win/*.exe
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
