@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,10 +17,10 @@ jobs:
         include:
           - os: macos-latest
             platform: mac
-            dist_script: dist:mac
+            build_command: npx electron-builder --mac --publish always
           - os: windows-latest
             platform: win
-            dist_script: dist:win
+            build_command: npx electron-builder --win --publish always
 
     runs-on: ${{ matrix.os }}
 
@@ -48,7 +47,7 @@ jobs:
       - name: Package and publish to GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run ${{ matrix.dist_script }} -- --publish always
+        run: ${{ matrix.build_command }}
 
       - name: Upload macOS DMG artifact
         if: matrix.platform == 'mac'
