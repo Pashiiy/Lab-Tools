@@ -29,8 +29,7 @@
     "electron:build:mac": "npm run build && npm run dist:mac",
     "electron:build:win": "npm run build && npm run dist:win",
     "electron:build:all": "npm run dist:all",
-    "release": "standard-version && git push --follow-tags origin main",
-    "release:dry-run": "standard-version --dry-run"
+    "release": "standard-version && git push --follow-tags origin main"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
@@ -74,11 +73,9 @@
       "!dist/**/*.map",
       "electron/**/*"
     ],
-    "publish": [
-      {
-        "provider": "github"
-      }
-    ],
+    "publish": {
+      "provider": "github"
+    },
     "mac": {
       "category": "public.app-category.medical",
       "icon": "public/icon.icns",

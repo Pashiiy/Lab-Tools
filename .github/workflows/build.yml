@@ -1,5 +1,6 @@
 name: Release Lab Tools
 
+# Tag-driven only: npm run release → standard-version → git push --follow-tags → this workflow.
 on:
   push:
     tags:
@@ -9,21 +10,9 @@ permissions:
   contents: write
 
 jobs:
-  # Each matrix leg runs on its own runner with a fresh workspace — no shared release/ folder.
-  release:
-    name: Build & publish (${{ matrix.platform }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            platform: mac
-            build_command: npx electron-builder --mac --publish always
-          - os: windows-latest
-            platform: win
-            build_command: npx electron-builder --win --publish always
-
-    runs-on: ${{ matrix.os }}
+  release-mac:
+    name: macOS DMG
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
@@ -45,15 +34,49 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run build
 
-      - name: Prepare clean release output directory (macOS)
-        if: matrix.platform == 'mac'
-        shell: bash
+      - name: Prepare clean release output directory
         run: |
           rm -rf release
           mkdir -p release
 
-      - name: Prepare clean release output directory (Windows)
-        if: matrix.platform == 'win'
+      - name: Package and publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish always
+
+      - name: Upload macOS DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-tools-mac-${{ github.ref_name }}
+          path: release/*.dmg
+          if-no-files-found: error
+          retention-days: 30
+
+  release-win:
+    name: Windows NSIS
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Build renderer (Vite)
+        run: npm run build
+
+      - name: Prepare clean release output directory
         shell: cmd
         run: |
           if exist release rmdir /s /q release
@@ -62,19 +85,9 @@ jobs:
       - name: Package and publish to GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ${{ matrix.build_command }}
-
-      - name: Upload macOS DMG artifact
-        if: matrix.platform == 'mac'
-        uses: actions/upload-artifact@v4
-        with:
-          name: lab-tools-mac-${{ github.ref_name }}
-          path: release/*.dmg
-          if-no-files-found: error
-          retention-days: 30
+        run: npx electron-builder --win --publish always
 
       - name: Upload Windows installer artifact
-        if: matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
           name: lab-tools-win-${{ github.ref_name }}
