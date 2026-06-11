@@ -8,6 +8,13 @@ Conventional commit types for version bumps:
 - `feat:` → minor
 - `BREAKING CHANGE:` or `feat!:` → major
 
+## [1.1.0](https://github.com/Pashiiy/Lab-Tools/compare/v1.0.12...v1.1.0) (2026-06-11)
+
+
+### Features
+
+* add export filter ([19cd9dd](https://github.com/Pashiiy/Lab-Tools/commit/19cd9dde2df51b3df20593d23b64e658c89026e1))
+
 ## [1.0.0] - 2026-06-11
 
 ### Features
