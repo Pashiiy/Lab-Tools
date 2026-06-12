@@ -8,6 +8,8 @@ Conventional commit types for version bumps:
 - `feat:` → minor
 - `BREAKING CHANGE:` or `feat!:` → major
 
+### [1.1.2](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.1...v1.1.2) (2026-06-12)
+
 ### [1.1.1](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.0...v1.1.1) (2026-06-12)
 
 ## [1.1.0](https://github.com/Pashiiy/Lab-Tools/compare/v1.0.12...v1.1.0) (2026-06-11)
