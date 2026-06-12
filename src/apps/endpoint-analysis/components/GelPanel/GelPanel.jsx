@@ -25,7 +25,7 @@ export default function GelPanel({
   const activeGel = openDrawer ? GEL_KEYS.find((g) => g.key === openDrawer) : null;
 
   return (
-    <section className="gel-strip">
+    <section className="gel-strip" data-tour="ea-gel">
       <div className="gel-strip__grid">
         {GEL_KEYS.map(({ key, label }) => (
           <GelSlot

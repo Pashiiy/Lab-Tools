@@ -6,7 +6,7 @@ export default function Header({
   onExport,
 }) {
   return (
-    <header className="header">
+    <header className="header" data-tour="ea-header">
       <h1 className="header__title">Endpoint Analyzer</h1>
       <div className="header__controls">
         <label className="header__field">
@@ -30,7 +30,7 @@ export default function Header({
             onChange={(e) => setColonyCount(e.target.value)}
           />
         </label>
-        <button type="button" className="header__export" onClick={onExport}>
+        <button type="button" className="header__export" data-tour="ea-export" onClick={onExport}>
           Export Excel
         </button>
       </div>

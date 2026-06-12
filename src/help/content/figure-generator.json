@@ -1,0 +1,82 @@
+{
+  "toolId": "figure-generator",
+  "version": "1.0.0",
+  "title": "Figure Generator",
+  "purpose": "Create publication-quality charts from CSV or Excel datasets with scientific formatting and vector export.",
+  "learningTime": "Learn this tool in under 2 minutes",
+  "capabilities": [
+    "Import CSV and Excel",
+    "Bar, line, scatter, and box plots",
+    "Customizable axes and labels",
+    "PNG, SVG, and PDF export",
+    "Publication-oriented styling"
+  ],
+  "demo": {
+    "type": "workflow",
+    "steps": [
+      "Upload data file",
+      "Choose chart type",
+      "Configure axes and labels",
+      "Export figure"
+    ]
+  },
+  "tour": [
+    {
+      "target": "[data-tour='fg-upload']",
+      "title": "Load data",
+      "body": "Drop or select a CSV or Excel file. Preview parsed columns before charting."
+    },
+    {
+      "target": "[data-tour='fg-config']",
+      "title": "Chart configuration",
+      "body": "Select chart type, map columns to axes, and adjust titles and styling."
+    },
+    {
+      "target": "[data-tour='fg-preview']",
+      "title": "Live preview",
+      "body": "Review the figure with lab-standard typography and colors before export."
+    },
+    {
+      "target": "[data-tour='fg-export']",
+      "title": "Export",
+      "body": "Download PNG for slides, SVG for Illustrator, or PDF for manuscripts."
+    }
+  ],
+  "overview": {
+    "purpose": "Transform tabular experimental data into formatted figures suitable for lab meetings and publications.",
+    "useCase": "Plot qPCR fold changes, growth curves, or assay readouts without manual Illustrator work.",
+    "inputs": "CSV or Excel files with numeric columns and optional grouping variables.",
+    "outputs": "PNG, SVG, or PDF figure files."
+  },
+  "workflow": [
+    { "step": 1, "title": "Upload data", "description": "Load your spreadsheet. The preview panel shows detected columns." },
+    { "step": 2, "title": "Select chart type", "description": "Choose bar, line, scatter, or box plot based on your data structure." },
+    { "step": 3, "title": "Configure", "description": "Assign X/Y columns, set axis labels, and adjust dimensions." },
+    { "step": 4, "title": "Export", "description": "Save at publication resolution." }
+  ],
+  "tips": [
+    "Use clear column headers — they become axis labels by default.",
+    "Prefer SVG or PDF for journal submissions requiring vector graphics.",
+    "Keep color palettes consistent with your lab's other figures."
+  ],
+  "faq": [
+    { "q": "What delimiters does CSV support?", "a": "Standard comma-separated values. Excel files are parsed with the first sheet used by default." },
+    { "q": "Can I edit the chart after export?", "a": "SVG exports can be opened in Illustrator or Inkscape for fine-tuning." }
+  ],
+  "video": {
+    "title": "Figure Generator workflow",
+    "src": "./help/demos/figure-generator.mp4",
+    "poster": ""
+  },
+  "keyboardShortcuts": [],
+  "whatsNew": [
+    {
+      "version": "1.0.0",
+      "date": "2026",
+      "items": [
+        "Initial release with bar, line, scatter, and box plots",
+        "PNG, SVG, and PDF export"
+      ]
+    }
+  ]
+}

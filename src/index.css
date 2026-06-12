@@ -15,6 +15,16 @@ body,
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--lt-text);
+  background: var(--lt-bg);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+}
+
+/* Minimal scrollbar for data-heavy views */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lt-border) transparent;
 }

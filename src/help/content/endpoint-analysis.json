@@ -1,0 +1,79 @@
+{
+  "toolId": "endpoint-analysis",
+  "version": "1.0.0",
+  "title": "Endpoint Analysis",
+  "purpose": "Score repair endpoint gels, classify colony phenotypes, and export structured endpoint assay data.",
+  "learningTime": "Learn this tool in under 3 minutes",
+  "capabilities": [
+    "Gel upload and lane scoring",
+    "Colony classification workflow",
+    "Summary statistics and charts",
+    "Excel export",
+    "Session autosave"
+  ],
+  "demo": {
+    "type": "workflow",
+    "steps": [
+      "Enter strain metadata",
+      "Upload and score gels",
+      "Classify colonies",
+      "Export summary"
+    ]
+  },
+  "tour": [
+    {
+      "target": "[data-tour='ea-header']",
+      "title": "Experiment metadata",
+      "body": "Enter strain name and colony count to contextualize your endpoint assay."
+    },
+    {
+      "target": "[data-tour='ea-tabs']",
+      "title": "Workflow tabs",
+      "body": "Move between gel scoring, colony classification, data tables, and charts."
+    },
+    {
+      "target": "[data-tour='ea-gel']",
+      "title": "Score gels",
+      "body": "Upload endpoint gels and assign lane scores according to your assay protocol."
+    },
+    {
+      "target": "[data-tour='ea-export']",
+      "title": "Export",
+      "body": "Download Excel with scored lanes, classifications, and summary statistics."
+    }
+  ],
+  "overview": {
+    "purpose": "Support Bloom Lab endpoint repair assays with integrated gel scoring and colony phenotype tracking.",
+    "useCase": "Document endpoint formation frequency and colony morphology classes for strain comparisons.",
+    "inputs": "Gel images, lane scores, colony classifications.",
+    "outputs": "Summary tables, charts, and Excel exports."
+  },
+  "workflow": [
+    { "step": 1, "title": "Set metadata", "description": "Enter strain and assay parameters in the header." },
+    { "step": 2, "title": "Score gels", "description": "Upload gels and record per-lane endpoint scores." },
+    { "step": 3, "title": "Classify colonies", "description": "Mark colonies and assign phenotype categories." },
+    { "step": 4, "title": "Review summary", "description": "Check aggregated counts and charts." },
+    { "step": 5, "title": "Export", "description": "Save Excel for lab records." }
+  ],
+  "tips": [
+    "Score gels consistently using the same brightness reference across the session.",
+    "Use colony categories defined in your protocol document.",
+    "Autosave preserves work if you close the tab accidentally."
+  ],
+  "faq": [
+    { "q": "Is my session saved?", "a": "Yes. Autosave stores progress locally and offers restore on return." }
+  ],
+  "video": {
+    "title": "Endpoint Analysis workflow",
+    "src": "./help/demos/endpoint-analysis.mp4",
+    "poster": ""
+  },
+  "keyboardShortcuts": [],
+  "whatsNew": [
+    {
+      "version": "1.0.0",
+      "date": "2026",
+      "items": ["Integrated gel scoring and colony classification", "Autosave and restore"]
+    }
+  ]
+}

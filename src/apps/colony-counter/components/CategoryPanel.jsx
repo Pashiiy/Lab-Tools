@@ -10,7 +10,7 @@ export default function CategoryPanel({
   dots,
 }) {
   return (
-    <section className="sidebar__section category-panel">
+    <section className="sidebar__section category-panel" data-tour="cc-categories">
       <h3 className="sidebar__heading">Categories</h3>
       <ul className="category-list">
         {categories.map((cat) => {

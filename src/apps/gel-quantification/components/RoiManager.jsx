@@ -307,7 +307,7 @@ export default function RoiManager({
   }, [draggingPairId, finishDrag, resolveDropTarget]);
 
   return (
-    <aside className="gq-sidebar gq-sidebar--right gq-roi-manager">
+    <aside className="gq-sidebar gq-sidebar--right gq-roi-manager" data-tour="gq-roi-manager">
       <div className="gq-roi-manager__header">
         <h3 className="gq-roi-manager__title">Pair Manager</h3>
       </div>

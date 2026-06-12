@@ -1,0 +1,246 @@
+.figure-generator {
+  --bg: var(--lt-bg);
+  --panel: var(--lt-panel);
+  --border: var(--lt-border);
+  --text: var(--lt-text);
+  --text-muted: var(--lt-text-muted);
+  --accent: var(--lt-accent);
+  --fg-chart-grid: var(--lt-chart-grid);
+  --fg-chart-label: var(--lt-chart-label);
+  --fg-chart-stroke: var(--lt-text);
+
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.fg-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.fg-header__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.fg-header__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.fg-export-bar {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.fg-upload {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.fg-upload__input {
+  display: none;
+}
+
+.fg-upload__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 3rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--lt-radius-md);
+  cursor: pointer;
+  text-align: center;
+  color: var(--text-muted);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.fg-upload__label:hover {
+  border-color: var(--lt-accent-hover-border);
+  background: var(--lt-hover);
+}
+
+.fg-upload__icon {
+  font-size: 2rem;
+}
+
+.fg-upload__error {
+  color: var(--lt-danger);
+  font-size: 0.8125rem;
+}
+
+.fg-workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  overflow: hidden;
+}
+
+.fg-sidebar {
+  border-right: 1px solid var(--border);
+  padding: 1rem;
+  overflow-y: auto;
+  background: var(--panel);
+}
+
+.fg-main {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+
+.fg-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fg-meta {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.65rem;
+}
+
+.fg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.fg-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.fg-field--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fg-reload {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.fg-chart-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.fg-chart-export-target {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--lt-radius-md);
+  padding: 1rem;
+}
+
+.fg-chart-frame {
+  display: flex;
+  flex-direction: column;
+}
+
+.fg-chart-title {
+  margin: 0 0 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fg-chart-svg-wrap {
+  flex: 1;
+  min-height: 280px;
+}
+
+.fg-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.fg-export-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--lt-danger);
+}
+
+.fg-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--lt-radius-md);
+}
+
+.fg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  font-family: 'DM Mono', monospace;
+}
+
+.fg-table th,
+.fg-table td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.fg-table th {
+  background: var(--panel);
+  color: var(--text-muted);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+}
+
+.fg-preview__more {
+  margin: 0.4rem 0 0;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .fg-workspace {
+    grid-template-columns: 1fr;
+  }
+  .fg-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 40vh;
+  }
+}

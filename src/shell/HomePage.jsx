@@ -1,161 +1,201 @@
-import { useCallback, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { TOOL_LIST } from './toolRegistry';
+import { TOOL_CATEGORIES, getManifest } from './toolManifest';
+import { ToolIcon } from './ToolIcons';
+import './home.css';
 
-const TOOL_VISUALS = {
-  'endpoint-analysis': {
-    accent: 'var(--lt-accent)',
-    gradient:
-      'linear-gradient(160deg, rgba(46, 139, 87, 0.22) 0%, rgba(19, 41, 75, 0.55) 55%, rgba(15, 15, 18, 0.92) 100%)',
-    parallax: 1.2,
-    hint: 'Gel scoring · colony classification · Excel charts',
-    Icon: EndpointIcon,
-  },
-  'colony-counter': {
-    accent: 'var(--lt-accent)',
-    gradient:
-      'linear-gradient(160deg, rgba(46, 139, 87, 0.18) 0%, rgba(75, 156, 211, 0.2) 40%, rgba(19, 41, 75, 0.5) 70%, rgba(15, 15, 18, 0.92) 100%)',
-    parallax: 0.9,
-    hint: 'Petri dish marking · CFU calculator · session files',
-    Icon: ColonyIcon,
-  },
-  'gel-quantification': {
-    accent: 'var(--lt-accent)',
-    gradient:
-      'linear-gradient(160deg, rgba(46, 139, 87, 0.24) 0%, rgba(125, 206, 160, 0.12) 35%, rgba(19, 41, 75, 0.52) 65%, rgba(15, 15, 18, 0.92) 100%)',
-    parallax: 1.05,
-    hint: 'Box-in-box correction · pair ratios · multi-sheet export',
-    Icon: GelIcon,
-  },
-};
-
-function EndpointIcon() {
+function ToolCard({ tool, index, isFavorite, onOpen, onToggleFavorite }) {
   return (
-    <svg className="shell-home__icon-svg" viewBox="0 0 48 48" fill="none" aria-hidden>
-      <rect x="8" y="28" width="8" height="12" rx="1" fill="currentColor" opacity="0.9" />
-      <rect x="20" y="20" width="8" height="20" rx="1" fill="currentColor" opacity="0.7" />
-      <rect x="32" y="12" width="8" height="28" rx="1" fill="currentColor" />
-      <path d="M6 40h36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.35" />
-    </svg>
-  );
-}
-
-function ColonyIcon() {
-  return (
-    <svg className="shell-home__icon-svg" viewBox="0 0 48 48" fill="none" aria-hidden>
-      <circle cx="24" cy="24" r="17" stroke="currentColor" strokeWidth="2" opacity="0.45" />
-      <circle cx="17" cy="20" r="2.5" fill="currentColor" />
-      <circle cx="27" cy="18" r="2" fill="currentColor" opacity="0.8" />
-      <circle cx="22" cy="28" r="2.2" fill="currentColor" opacity="0.9" />
-      <circle cx="31" cy="27" r="1.8" fill="currentColor" opacity="0.65" />
-      <circle cx="15" cy="29" r="1.6" fill="currentColor" opacity="0.55" />
-    </svg>
-  );
-}
-
-function GelIcon() {
-  return (
-    <svg className="shell-home__icon-svg" viewBox="0 0 48 48" fill="none" aria-hidden>
-      <rect x="10" y="14" width="28" height="22" rx="2" stroke="currentColor" strokeWidth="2" opacity="0.5" />
-      <rect x="16" y="20" width="16" height="10" rx="1" stroke="currentColor" strokeWidth="2" />
-      <line x1="10" y1="38" x2="38" y2="38" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.35" />
-    </svg>
-  );
-}
-
-export default function HomePage({ onOpenTool }) {
-  const [hoveredId, setHoveredId] = useState(null);
-  const containerRef = useRef(null);
-  const rafRef = useRef(null);
-
-  const handleMouseMove = useCallback((e) => {
-    const root = containerRef.current;
-    if (!root) return;
-
-    const rect = root.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
-
-    if (rafRef.current != null) return;
-
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      root.style.setProperty('--mx', nx.toFixed(4));
-      root.style.setProperty('--my', ny.toFixed(4));
-    });
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    const root = containerRef.current;
-    if (!root) return;
-    root.style.setProperty('--mx', '0');
-    root.style.setProperty('--my', '0');
-    setHoveredId(null);
-  }, []);
-
-  return (
-    <div
-      ref={containerRef}
-      className="shell-home"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+    <article
+      className="home-card"
+      style={{ '--stagger': index }}
     >
-      <div className="shell-home__parallax-bg" aria-hidden />
+      <button
+        type="button"
+        className="home-card__main"
+        onClick={() => onOpen(tool.id)}
+      >
+        <div className="home-card__icon-wrap" aria-hidden>
+          <ToolIcon name={tool.manifest.Icon} />
+        </div>
+        <div className="home-card__content">
+          <h3 className="home-card__name">{tool.name}</h3>
+          <p className="home-card__desc">{tool.description}</p>
+          {tool.manifest.hint && (
+            <p className="home-card__hint">{tool.manifest.hint}</p>
+          )}
+        </div>
+        <span className="home-card__arrow" aria-hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
+      </button>
+      <div className="home-card__footer">
+        <span className="home-card__category">{tool.categoryLabel}</span>
+        <button
+          type="button"
+          className={`home-card__fav${isFavorite ? ' home-card__fav--on' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(tool.id);
+          }}
+          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          {isFavorite ? '★' : '☆'}
+        </button>
+      </div>
+    </article>
+  );
+}
 
-      <header className="shell-home__header">
-        <h1 className="shell-home__title">Lab Tools</h1>
-        <p className="shell-home__tagline">Select a module to open a new session</p>
+function QuickLaunchCard({ tool, index, onOpen, variant = 'recent' }) {
+  return (
+    <button
+      type="button"
+      className={`home-quick home-quick--${variant}`}
+      style={{ '--stagger': index }}
+      onClick={() => onOpen(tool.id)}
+    >
+      <span className="home-quick__icon" aria-hidden>
+        <ToolIcon name={tool.manifest.Icon} />
+      </span>
+      <span className="home-quick__label">{tool.name}</span>
+    </button>
+  );
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+export default function HomePage({
+  onOpenTool,
+  favorites,
+  recent,
+  onToggleFavorite,
+  isFavorite,
+}) {
+  const enrichedTools = useMemo(
+    () =>
+      TOOL_LIST.map((tool) => {
+        const manifest = getManifest(tool.id);
+        return {
+          ...tool,
+          manifest,
+          categoryLabel: TOOL_CATEGORIES[manifest.category]?.label ?? 'Analysis',
+        };
+      }),
+    []
+  );
+
+  const recentTools = useMemo(
+    () =>
+      recent
+        .map((id) => enrichedTools.find((t) => t.id === id))
+        .filter(Boolean),
+    [recent, enrichedTools]
+  );
+
+  const favoriteTools = useMemo(
+    () => enrichedTools.filter((t) => favorites.includes(t.id)),
+    [enrichedTools, favorites]
+  );
+
+  const grouped = useMemo(() => {
+    const order = Object.values(TOOL_CATEGORIES).sort((a, b) => a.order - b.order);
+    return order
+      .map((cat) => ({
+        category: cat,
+        tools: enrichedTools.filter((t) => t.manifest.category === cat.id),
+      }))
+      .filter((g) => g.tools.length > 0);
+  }, [enrichedTools]);
+
+  let cardIndex = 0;
+
+  return (
+    <div className="home">
+      <div className="home__ambient" aria-hidden />
+
+      <header className="home__welcome home-animate" style={{ '--stagger': 0 }}>
+        <p className="home__greeting">{getGreeting()}</p>
+        <h1 className="home__title">Lab Tools</h1>
+        <p className="home__subtitle">
+          Molecular biology analysis workspace — open a module to begin a session.
+        </p>
       </header>
 
-      <div className="shell-home__panels" role="list">
-        {TOOL_LIST.map((tool) => {
-          const visual = TOOL_VISUALS[tool.id] ?? TOOL_VISUALS['endpoint-analysis'];
-          const { Icon } = visual;
-          const isHovered = hoveredId === tool.id;
-          const isShrunk = hoveredId != null && hoveredId !== tool.id;
-
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              role="listitem"
-              className={[
-                'shell-home__panel',
-                `shell-home__panel--${tool.id}`,
-                isHovered ? 'shell-home__panel--hovered' : '',
-                isShrunk ? 'shell-home__panel--shrunk' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              style={{
-                '--panel-accent': visual.accent,
-                '--panel-gradient': visual.gradient,
-                '--panel-parallax': visual.parallax,
-              }}
-              onMouseEnter={() => setHoveredId(tool.id)}
-              onFocus={() => setHoveredId(tool.id)}
-              onClick={() => onOpenTool(tool.id)}
-              aria-label={`Open ${tool.name}`}
-            >
-              <div className="shell-home__panel-bg" aria-hidden />
-              <div className="shell-home__panel-glow" aria-hidden />
-
-              <div className="shell-home__panel-content">
-                <div className="shell-home__panel-icon">
-                  <Icon />
-                </div>
-
-                <h2 className="shell-home__panel-name">{tool.name}</h2>
-
-                <div className="shell-home__panel-details">
-                  <p className="shell-home__panel-desc">{tool.description}</p>
-                  <p className="shell-home__panel-hint">{visual.hint}</p>
-                  <span className="shell-home__panel-cta">Open new session</span>
-                </div>
+      {(recentTools.length > 0 || favoriteTools.length > 0) && (
+        <div className="home__quick-row">
+          {recentTools.length > 0 && (
+            <section className="home__quick-section home-animate" style={{ '--stagger': 1 }}>
+              <h2 className="home__section-label">Recent</h2>
+              <div className="home__quick-track">
+                {recentTools.map((tool, i) => (
+                  <QuickLaunchCard
+                    key={tool.id}
+                    tool={tool}
+                    index={i}
+                    onOpen={onOpenTool}
+                    variant="recent"
+                  />
+                ))}
               </div>
-            </button>
-          );
-        })}
-      </div>
+            </section>
+          )}
+
+          {favoriteTools.length > 0 && (
+            <section className="home__quick-section home-animate" style={{ '--stagger': 2 }}>
+              <h2 className="home__section-label">Favorites</h2>
+              <div className="home__quick-track">
+                {favoriteTools.map((tool, i) => (
+                  <QuickLaunchCard
+                    key={tool.id}
+                    tool={tool}
+                    index={i}
+                    onOpen={onOpenTool}
+                    variant="favorite"
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {grouped.map(({ category, tools }, sectionIdx) => (
+        <section
+          key={category.id}
+          className="home__category home-animate"
+          style={{ '--stagger': 3 + sectionIdx }}
+        >
+          <div className="home__category-header">
+            <h2 className="home__section-label">{category.label}</h2>
+            <span className="home__category-count">
+              {tools.length} module{tools.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="home__grid">
+            {tools.map((tool) => {
+              const idx = cardIndex++;
+              return (
+                <ToolCard
+                  key={tool.id}
+                  tool={tool}
+                  index={idx}
+                  isFavorite={isFavorite(tool.id)}
+                  onOpen={onOpenTool}
+                  onToggleFavorite={onToggleFavorite}
+                />
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

@@ -1,33 +1,24 @@
+/** Publication-style chart theme — reads global design tokens */
 export function getEndpointChartTheme() {
+  const root = getComputedStyle(document.documentElement);
+
+  const get = (token, fallback) =>
+    root.getPropertyValue(token).trim() || fallback;
+
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
-  if (isLight) {
-    return {
-      tick: '#52525b',
-      label: '#71717a',
-      text: '#3f3f46',
-      count: '#1a1a1e',
-      grid: 'rgba(0, 0, 0, 0.08)',
-      cursor: 'rgba(0, 0, 0, 0.04)',
-      tooltipBg: '#ffffff',
-      tooltipBorder: 'rgba(0, 0, 0, 0.12)',
-      tooltipText: '#1a1a1e',
-      exportBg: '#ffffff',
-      barLabel: '#ffffff',
-    };
-  }
-
   return {
-    tick: '#aaaaaa',
-    label: '#888888',
-    text: '#cccccc',
-    count: '#ffffff',
-    grid: 'rgba(255, 255, 255, 0.06)',
-    cursor: 'rgba(255, 255, 255, 0.04)',
-    tooltipBg: '#1e1e28',
-    tooltipBorder: 'rgba(255, 255, 255, 0.1)',
-    tooltipText: '#e8e8ec',
-    exportBg: '#16161c',
+    tick: get('--lt-chart-tick', isLight ? '#4b5563' : '#9ca3af'),
+    label: get('--lt-chart-label', isLight ? '#4b5563' : '#9ca3af'),
+    text: get('--lt-chart-text', isLight ? '#13294b' : '#d1d5db'),
+    count: get('--lt-text', isLight ? '#13294b' : '#f3f4f6'),
+    grid: get('--lt-chart-grid', isLight ? 'rgba(19,41,75,0.1)' : 'rgba(156,163,175,0.15)'),
+    cursor: get('--lt-hover', 'rgba(75,156,211,0.08)'),
+    tooltipBg: get('--lt-chart-tooltip-bg', isLight ? '#ffffff' : '#1f2937'),
+    tooltipBorder: get('--lt-chart-tooltip-border', isLight ? '#d1d9e6' : '#374151'),
+    tooltipText: get('--lt-text', isLight ? '#13294b' : '#f3f4f6'),
+    exportBg: get('--lt-panel', isLight ? '#ffffff' : '#1f2937'),
     barLabel: '#ffffff',
+    axis: get('--lt-chart-axis', '#6b7280'),
   };
 }

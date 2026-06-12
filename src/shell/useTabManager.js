@@ -15,7 +15,7 @@ function createTab(toolId) {
   };
 }
 
-export function useTabManager() {
+export function useTabManager({ onToolOpened } = {}) {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
   const [view, setView] = useState('home');
@@ -39,7 +39,8 @@ export function useTabManager() {
     setTabs((prev) => [...prev, tab]);
     setActiveTabId(tab.id);
     setView('tool');
-  }, []);
+    onToolOpened?.(toolId);
+  }, [onToolOpened]);
 
   const selectTab = useCallback((tabId) => {
     setActiveTabId(tabId);

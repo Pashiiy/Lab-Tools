@@ -1,0 +1,100 @@
+[
+  {
+    "strainId": "1214",
+    "commonName": "Wild Type",
+    "genotype": "WT",
+    "description": "Reference strain used as the baseline control for experiments.",
+    "dnaRepairCharacteristics": [
+      "All major DNA repair pathways intact",
+      "Functional homologous recombination",
+      "Functional non-homologous end joining",
+      "Normal DNA damage checkpoint responses",
+      "Normal chromosome segregation machinery"
+    ],
+    "expectedPhenotypes": [
+      "Baseline survival following DNA damage",
+      "Baseline recombination frequency",
+      "Normal growth under standard laboratory conditions",
+      "Used as comparison for mutant strains"
+    ],
+    "tags": ["wildtype", "control", "repair proficient", "reference"]
+  },
+  {
+    "strainId": "1227",
+    "commonName": "rad52Δ",
+    "genotype": "rad52",
+    "description": "Homologous recombination deficient strain.",
+    "dnaRepairCharacteristics": [
+      "Severe impairment of homologous recombination",
+      "Defective double-strand break repair through RAD52-mediated pathways",
+      "Reduced gene conversion events",
+      "Reduced break-induced repair efficiency",
+      "Greater reliance on alternative repair mechanisms"
+    ],
+    "expectedPhenotypes": [
+      "Increased sensitivity to DNA damage",
+      "Reduced survival after double-strand breaks",
+      "Altered chromosome repair outcomes",
+      "Increased genome instability"
+    ],
+    "tags": ["rad52", "homologous recombination", "DSB repair", "genome instability"]
+  },
+  {
+    "strainId": "1401",
+    "commonName": "sgo1Δ",
+    "genotype": "sgo1",
+    "description": "Shugoshin-deficient strain affecting chromosome segregation and centromere function.",
+    "dnaRepairCharacteristics": [
+      "DNA repair pathways largely intact",
+      "Defects primarily associated with centromere and chromosome segregation functions",
+      "Altered pericentromeric organization",
+      "May influence repair outcomes near centromeres indirectly"
+    ],
+    "expectedPhenotypes": [
+      "Increased chromosome segregation defects",
+      "Reduced protection of centromeric cohesion",
+      "Increased chromosome instability under stress",
+      "Potential effects on dicentric chromosome behavior"
+    ],
+    "tags": ["sgo1", "shugoshin", "centromere", "chromosome segregation", "cohesion"]
+  },
+  {
+    "strainId": "1128",
+    "commonName": "slk19Δ",
+    "genotype": "slk19",
+    "description": "Spindle-associated mutant involved in chromosome segregation and mitotic progression.",
+    "dnaRepairCharacteristics": [
+      "No major core DNA repair pathway deletion",
+      "Primarily affects spindle dynamics and chromosome behavior during mitosis",
+      "Can alter chromosome stability indirectly"
+    ],
+    "expectedPhenotypes": [
+      "Mitotic segregation defects",
+      "Increased chromosome instability",
+      "Altered response to spindle-associated stress",
+      "Potential effects on dicentric chromosome resolution"
+    ],
+    "tags": ["slk19", "spindle", "mitosis", "chromosome segregation"]
+  },
+  {
+    "strainId": "6687",
+    "commonName": "mus81Δ yen1Δ rad1Δ",
+    "genotype": "mus81 yen1 rad1 triple mutant",
+    "description": "Triple nuclease mutant affecting multiple DNA structure processing pathways.",
+    "dnaRepairCharacteristics": [
+      "Loss of MUS81 structure-selective endonuclease activity",
+      "Loss of YEN1 Holliday junction resolution activity",
+      "Loss of RAD1 nuclease function involved in DNA repair processing",
+      "Defective processing of recombination intermediates",
+      "Reduced ability to resolve complex DNA repair structures"
+    ],
+    "expectedPhenotypes": [
+      "Elevated genome instability",
+      "Increased persistence of recombination intermediates",
+      "Reduced resolution of Holliday junction-like structures",
+      "Increased sensitivity to replication-associated stress",
+      "Altered repair outcomes following chromosome breakage"
+    ],
+    "tags": ["mus81", "yen1", "rad1", "recombination", "nuclease mutant", "Holliday junction", "genome instability"]
+  }
+]

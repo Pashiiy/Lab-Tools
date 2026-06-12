@@ -1,0 +1,93 @@
+{
+  "toolId": "gel-quantification",
+  "version": "1.0.0",
+  "title": "Gel Quantification",
+  "purpose": "Measure DNA and RNA band intensity, normalize samples against controls, and export quantitative gel analysis data compatible with Fiji/ImageJ workflows.",
+  "learningTime": "Learn this tool in under 2 minutes",
+  "capabilities": [
+    "Upload multiple gels per session",
+    "Target / control paired ROI quantification",
+    "Box-in-box background subtraction",
+    "Multi-gel unified results table",
+    "CSV and Excel export with ROI metadata"
+  ],
+  "demo": {
+    "type": "workflow",
+    "steps": [
+      "Upload gel image",
+      "Click Target then Control on bands",
+      "Review intensity table",
+      "Export quantitative data"
+    ]
+  },
+  "tour": [
+    {
+      "target": "[data-tour='gq-upload']",
+      "title": "Upload gel images",
+      "body": "Add one or more gel images to your session. TIFF, PNG, and JPEG are supported."
+    },
+    {
+      "target": "[data-tour='gq-tabs']",
+      "title": "Image and data views",
+      "body": "Switch between the image workspace and the unified multi-gel results table."
+    },
+    {
+      "target": "[data-tour='gq-viewer']",
+      "title": "Create ROIs",
+      "body": "Click a band to place a Target ROI, then click the matching control band. Adjust inner and outer boxes in the ROI manager."
+    },
+    {
+      "target": "[data-tour='gq-roi-manager']",
+      "title": "Manage pairs",
+      "body": "Rename pairs, edit sample labels, and review per-band measurements and ratios."
+    },
+    {
+      "target": "[data-tour='gq-export']",
+      "title": "Export results",
+      "body": "Download CSV or Excel reports with corrected intensities, ratios, and ROI coordinates."
+    }
+  ],
+  "overview": {
+    "purpose": "Quantify gel electrophoresis band intensity using user-defined ROIs and background subtraction.",
+    "useCase": "Compare relative band abundance across lanes, normalize to a housekeeping control, and export publication-ready tables.",
+    "inputs": "Gel images (TIFF preferred for 16-bit; PNG/JPEG supported). Target and control band placements per lane pair.",
+    "outputs": "Per-lane corrected intensities, target/control ratios, CSV/Excel exports with ROI metadata."
+  },
+  "workflow": [
+    { "step": 1, "title": "Upload image", "description": "Add gel files via the sidebar. Multiple gels can be analyzed in one session." },
+    { "step": 2, "title": "Place Target ROI", "description": "In Image View, click the band of interest. Default inner (30×70) and outer (45×85) boxes are applied." },
+    { "step": 3, "title": "Place Control ROI", "description": "Click the reference band in the same lane pair. The tool computes background-corrected intensity." },
+    { "step": 4, "title": "Review data table", "description": "Open the Data Table tab to compare lanes, filter by gel, and edit sample labels." },
+    { "step": 5, "title": "Export", "description": "Export CSV or Excel for downstream analysis or lab records." }
+  ],
+  "tips": [
+    "Use consistent exposure and imaging settings across gels in a comparison set.",
+    "Avoid saturated bands — clipped pixels cannot be recovered quantitatively.",
+    "Keep ROI dimensions consistent across lanes using the template defaults.",
+    "Normalize to a stable control lane within each gel.",
+    "Display invert is visual only and does not change exported values."
+  ],
+  "faq": [
+    { "q": "Why is my band intensity zero?", "a": "The ROI may miss the band, or the background ring may fully subtract signal. Reposition the inner box over the band and ensure the outer box captures local background only." },
+    { "q": "Why do two bands give similar values?", "a": "Bands with similar loading and exposure often yield comparable corrected intensities. Verify ROI placement and check for saturation." },
+    { "q": "Does image inversion affect analysis?", "a": "No. Invert is a display-only adjustment. All quantification uses the original decoded pixel data." },
+    { "q": "Can I analyze multiple gels?", "a": "Yes. Upload multiple images, switch between them with the gel selector, and export a unified dataset." }
+  ],
+  "video": {
+    "title": "Gel Quantification workflow",
+    "src": "./help/demos/gel-quantification.mp4",
+    "poster": ""
+  },
+  "keyboardShortcuts": [],
+  "whatsNew": [
+    {
+      "version": "1.0.0",
+      "date": "2026",
+      "items": [
+        "Multi-gel dataset support with unified export",
+        "Visual-only gel invert toggle",
+        "Standardized ROI defaults (30×70 / 45×85)"
+      ]
+    }
+  ]
+}

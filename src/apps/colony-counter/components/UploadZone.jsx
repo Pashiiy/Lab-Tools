@@ -35,6 +35,7 @@ export default function UploadZone({ onUpload }) {
   return (
     <div
       className={`upload-zone${dragOver ? ' upload-zone--active' : ''}`}
+      data-tour="cc-upload"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

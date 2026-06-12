@@ -5,7 +5,7 @@ const TABS = [
 
 export default function Tabs({ activeTab, onTabChange }) {
   return (
-    <nav className="tabs" role="tablist">
+    <nav className="tabs" role="tablist" data-tour="ea-tabs">
       {TABS.map(({ id, label }) => (
         <button
           key={id}

@@ -1,0 +1,234 @@
+.strain-ref__search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.strain-ref__search,
+.strain-ref__filter {
+  width: 100%;
+  font-size: 0.8125rem;
+}
+
+.strain-ref__count {
+  margin: 0 0 0.5rem;
+  font-size: 0.65rem;
+  color: var(--lt-text-muted);
+}
+
+.strain-ref__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+}
+
+.strain-ref__item {
+  border-bottom: 1px solid var(--lt-border);
+}
+
+.strain-ref__item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.55rem 0;
+  border: none;
+  background: transparent;
+  color: var(--lt-text);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.strain-ref__item-header:hover {
+  color: var(--lt-accent-text);
+}
+
+.strain-ref__chevron {
+  color: var(--lt-text-muted);
+  font-size: 0.7rem;
+  width: 0.75rem;
+}
+
+.strain-ref__id {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lt-accent-text);
+  flex-shrink: 0;
+  min-width: 2.5rem;
+}
+
+.strain-ref__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strain-ref__tag-preview {
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--lt-accent-subtle);
+  color: var(--lt-accent-text);
+}
+
+.strain-ref__body {
+  padding: 0 0 0.65rem 1.15rem;
+}
+
+.strain-ref__meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.strain-ref__meta-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--lt-text-muted);
+  flex-shrink: 0;
+}
+
+.strain-ref__meta-value {
+  font-size: 0.8125rem;
+  color: var(--lt-text);
+}
+
+.strain-ref__meta-value--id {
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  color: var(--lt-accent-text);
+}
+
+.strain-ref__section {
+  margin-bottom: 0.55rem;
+}
+
+.strain-ref__section-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lt-text-muted);
+}
+
+.strain-ref__bullets {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--lt-text);
+}
+
+.strain-ref__bullets li {
+  margin-bottom: 0.2rem;
+}
+
+.strain-ref__genotype-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.strain-ref__genotype-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.strain-ref__genotype {
+  flex: 1;
+  min-width: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--lt-text);
+  word-break: break-word;
+}
+
+.strain-ref__desc {
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  color: var(--lt-text);
+}
+
+.strain-ref__notes {
+  margin: 0 0 0.4rem;
+  font-size: 0.7rem;
+  color: var(--lt-text-muted);
+  font-style: italic;
+}
+
+.strain-ref__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.strain-ref__tag {
+  font-size: 0.6rem;
+  padding: 2px 7px;
+  border-radius: var(--lt-radius-sm);
+  border: 1px solid var(--lt-border);
+  color: var(--lt-text-muted);
+}
+
+.strain-ref__empty {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--lt-text-muted);
+  padding: 1.5rem 0;
+}
+
+.strain-ref__admin {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--lt-border);
+}
+
+.strain-ref__admin-btn {
+  width: 100%;
+  font-size: 0.7rem;
+}
+
+.strain-ref__admin-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.65rem;
+  color: var(--lt-text-muted);
+}
+
+.strain-ref__admin-textarea {
+  width: 100%;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  min-height: 120px;
+  resize: vertical;
+}
+
+.strain-ref__admin-error {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: var(--lt-danger);
+}
+
+.strain-ref__admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}

@@ -11,7 +11,7 @@ export default function Workspace({
   findDotAt,
 }) {
   return (
-    <main className={`workspace${image ? ' workspace--canvas' : ''}`}>
+    <main className={`workspace${image ? ' workspace--canvas' : ''}`} data-tour="cc-workspace">
       {!image ? (
         <UploadZone onUpload={onUpload} />
       ) : (

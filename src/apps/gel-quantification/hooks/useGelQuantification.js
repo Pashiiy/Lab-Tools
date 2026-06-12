@@ -17,29 +17,36 @@ import {
   reorderPairsById,
   ROI_ROLES,
 } from '../engine/roiModel';
+import {
+  createGelEntry,
+  createInitialDocument,
+  updateGelInList,
+} from '../utils/gelDataset';
 import { useRoiHistory } from './useRoiHistory';
 import { exportGelQuantExcel } from '../utils/exportExcel';
-
-function createInitialDocument() {
-  return {
-    pairs: [],
-    rois: [],
-    activeRoiId: null,
-    creationMode: CREATION_MODES.TARGET,
-    strainName: '',
-    description: '',
-  };
-}
+import { exportGelQuantCsv } from '../utils/exportCsv';
+import {
+  setCachedThumbnail,
+  getCachedThumbnail,
+} from '../utils/gelImageCache';
+import {
+  createGelThumbnailDataUrl,
+  scheduleThumbnailBuild,
+} from '../utils/gelThumbnail';
 
 export function useGelQuantification() {
+  const [gels, setGels] = useState([]);
+  const [activeGelId, setActiveGelId] = useState(null);
   const [raw, setRaw] = useState(null);
   const [image, setImage] = useState(null);
   const [displayAdjustments, setDisplayAdjustmentsState] = useState({
     ...DEFAULT_DISPLAY_ADJUSTMENTS,
   });
+  const [inverted, setInvertedState] = useState(false);
   const [roiTemplate, setRoiTemplate] = useState({ ...DEFAULT_ROI_TEMPLATE });
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('image');
+  const [sessionMeta, setSessionMeta] = useState({ strainName: '', description: '' });
 
   const {
     present: doc,
@@ -57,13 +64,68 @@ export function useGelQuantification() {
     docRef.current = doc;
   }, [doc]);
 
+  const syncActiveGel = useCallback(
+    (patch) => {
+      if (!activeGelId) return;
+      setGels((prev) => updateGelInList(prev, activeGelId, patch));
+    },
+    [activeGelId]
+  );
+
+  useEffect(() => {
+    if (!activeGelId) return;
+    setGels((prev) => updateGelInList(prev, activeGelId, { doc }));
+  }, [doc, activeGelId]);
+
+  const applyGelState = useCallback(
+    (gel) => {
+      setRaw(gel.raw ?? null);
+      setImage(gel.raw ? toAnalysisImage(gel.raw) : null);
+      setDisplayAdjustmentsState({ ...gel.displayAdjustments });
+      setInvertedState(!!gel.inverted);
+      resetHistory(gel.doc ?? createInitialDocument());
+    },
+    [resetHistory]
+  );
+
+  const queueThumbnailForGel = useCallback((gelId, rawStore) => {
+    const cached = getCachedThumbnail(gelId);
+    if (cached) {
+      setGels((prev) => updateGelInList(prev, gelId, { thumbnailUrl: cached }));
+      return;
+    }
+
+    scheduleThumbnailBuild(() => createGelThumbnailDataUrl(rawStore)).then((url) => {
+      if (!url) return;
+      setCachedThumbnail(gelId, url);
+      setGels((prev) => updateGelInList(prev, gelId, { thumbnailUrl: url }));
+    });
+  }, []);
+
+  const switchToGel = useCallback(
+    (gelId) => {
+      const gel = gels.find((g) => g.id === gelId);
+      if (!gel) return;
+      if (activeGelId && activeGelId !== gelId) {
+        syncActiveGel({
+          doc: docRef.current,
+          displayAdjustments,
+          inverted,
+        });
+      }
+      setActiveGelId(gelId);
+      applyGelState(gel);
+    },
+    [gels, activeGelId, syncActiveGel, displayAdjustments, inverted, applyGelState]
+  );
+
   const enrichedPairs = useMemo(
-    () => enrichPairs(doc.pairs, doc.rois, image),
+    () => (image ? enrichPairs(doc.pairs, doc.rois, image) : []),
     [doc.pairs, doc.rois, image]
   );
 
   const roisWithMeasurements = useMemo(
-    () => enrichAllRois(doc.rois, image),
+    () => (image ? enrichAllRois(doc.rois, image) : []),
     [doc.rois, image]
   );
 
@@ -72,29 +134,99 @@ export function useGelQuantification() {
     [enrichedPairs]
   );
 
+  const allGelResults = useMemo(() => {
+    return gels.map((gel) => {
+      if (!gel.raw) {
+        return {
+          gelId: gel.id,
+          gelName: gel.name,
+          raw: null,
+          pairs: [],
+          averagedRatio: null,
+        };
+      }
+      const img = toAnalysisImage(gel.raw);
+      const gelDoc = gel.id === activeGelId ? doc : gel.doc;
+      const pairs = enrichPairs(gelDoc.pairs, gelDoc.rois, img);
+      return {
+        gelId: gel.id,
+        gelName: gel.name,
+        raw: gel.raw,
+        pairs,
+        averagedRatio: computeAveragedRatio(pairs),
+      };
+    });
+  }, [gels, activeGelId, doc]);
+
+  const allEnrichedPairs = useMemo(
+    () =>
+      allGelResults.flatMap(({ gelId, gelName, pairs }) =>
+        pairs.map((p) => ({
+          ...p,
+          gelId,
+          gelName,
+          lane: p.index,
+        }))
+      ),
+    [allGelResults]
+  );
+
+  const totalCompletePairs = useMemo(
+    () => allEnrichedPairs.filter((p) => p.complete).length,
+    [allEnrichedPairs]
+  );
+
+  const sessionAveragedRatio = useMemo(
+    () => computeAveragedRatio(allEnrichedPairs),
+    [allEnrichedPairs]
+  );
+
   const activeRoi = useMemo(
     () => roisWithMeasurements.find((r) => r.id === doc.activeRoiId) ?? null,
     [roisWithMeasurements, doc.activeRoiId]
   );
 
-  const incompletePair = useMemo(
-    () => getIncompletePair(doc.pairs),
-    [doc.pairs]
+  const incompletePair = useMemo(() => getIncompletePair(doc.pairs), [doc.pairs]);
+
+  const activeGelIndex = useMemo(
+    () => gels.findIndex((g) => g.id === activeGelId),
+    [gels, activeGelId]
   );
 
   const updateDoc = useCallback(
     (updater) => {
-      commit((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }));
+      commit((prev) =>
+        typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }
+      );
     },
     [commit]
   );
 
-  const setDisplayAdjustments = useCallback((partial) => {
-    setDisplayAdjustmentsState((prev) => ({ ...prev, ...partial }));
-  }, []);
+  const setDisplayAdjustments = useCallback(
+    (partial) => {
+      setDisplayAdjustmentsState((prev) => {
+        const next = { ...prev, ...partial };
+        syncActiveGel({ displayAdjustments: next });
+        return next;
+      });
+    },
+    [syncActiveGel]
+  );
+
+  const setInverted = useCallback(
+    (value) => {
+      setInvertedState(value);
+      syncActiveGel({ inverted: value });
+    },
+    [syncActiveGel]
+  );
 
   const setTemplate = useCallback((partial) => {
     setRoiTemplate((prev) => ({ ...prev, ...partial }));
+  }, []);
+
+  const resetTemplateDefaults = useCallback(() => {
+    setRoiTemplate({ ...DEFAULT_ROI_TEMPLATE });
   }, []);
 
   const setCreationMode = useCallback(
@@ -104,32 +236,51 @@ export function useGelQuantification() {
     [doc, replace]
   );
 
-  const loadImage = useCallback(
+  const addGelFromFile = useCallback(
     async (file) => {
       if (!file) return;
       setLoading(true);
       try {
         const loadedRaw = await loadRawImageFromFile(file);
-        setRaw(loadedRaw);
-        setImage(toAnalysisImage(loadedRaw));
-        setDisplayAdjustmentsState({ ...DEFAULT_DISPLAY_ADJUSTMENTS });
-        setRoiTemplate({ ...DEFAULT_ROI_TEMPLATE });
-        resetHistory(createInitialDocument());
+        const entry = createGelEntry(loadedRaw);
+        setGels((prev) => [...prev, entry]);
+        setActiveGelId(entry.id);
+        applyGelState(entry);
         setActiveTab('image');
+        queueThumbnailForGel(entry.id, loadedRaw);
       } catch (err) {
         alert(err.message || 'Failed to load image');
       } finally {
         setLoading(false);
       }
     },
-    [resetHistory]
+    [applyGelState, queueThumbnailForGel]
   );
+
+  const renameGel = useCallback((gelId, name) => {
+    setGels((prev) => {
+      const current = prev.find((g) => g.id === gelId);
+      return updateGelInList(prev, gelId, {
+        name: name.trim() || current?.name || 'Gel',
+      });
+    });
+  }, []);
+
+  const goToPrevGel = useCallback(() => {
+    if (gels.length < 2 || activeGelIndex <= 0) return;
+    switchToGel(gels[activeGelIndex - 1].id);
+  }, [gels, activeGelIndex, switchToGel]);
+
+  const goToNextGel = useCallback(() => {
+    if (gels.length < 2 || activeGelIndex >= gels.length - 1) return;
+    switchToGel(gels[activeGelIndex + 1].id);
+  }, [gels, activeGelIndex, switchToGel]);
 
   const selectRoi = useCallback(
     (roiId) => {
-      replace({ ...doc, activeRoiId: roiId });
+      replace({ ...docRef.current, activeRoiId: roiId });
     },
-    [doc, replace]
+    [replace]
   );
 
   const createRoiAtClick = useCallback(
@@ -283,21 +434,36 @@ export function useGelQuantification() {
     [updateDoc]
   );
 
-  const updateSessionFields = useCallback(
-    (fields) => {
-      replace({ ...docRef.current, ...fields });
-    },
-    [replace]
-  );
+  const updateSessionFields = useCallback((fields) => {
+    setSessionMeta((prev) => ({ ...prev, ...fields }));
+  }, []);
 
   const setRoiUserLabel = useCallback(
-    (roiId, userLabel) => {
-      updateDoc((prev) => ({
-        ...prev,
-        rois: prev.rois.map((r) => (r.id === roiId ? { ...r, userLabel } : r)),
-      }));
+    (roiId, userLabel, gelId = null) => {
+      const targetGelId = gelId ?? activeGelId;
+      if (targetGelId === activeGelId) {
+        updateDoc((prev) => ({
+          ...prev,
+          rois: prev.rois.map((r) => (r.id === roiId ? { ...r, userLabel } : r)),
+        }));
+        return;
+      }
+      setGels((prev) =>
+        prev.map((g) => {
+          if (g.id !== targetGelId) return g;
+          return {
+            ...g,
+            doc: {
+              ...g.doc,
+              rois: g.doc.rois.map((r) =>
+                r.id === roiId ? { ...r, userLabel } : r
+              ),
+            },
+          };
+        })
+      );
     },
-    [updateDoc]
+    [activeGelId, updateDoc]
   );
 
   const reassignRoi = useCallback(
@@ -355,37 +521,81 @@ export function useGelQuantification() {
     [updateDoc]
   );
 
-  const exportExcel = useCallback(async () => {
-    await exportGelQuantExcel({
-      raw,
-      pairs: enrichedPairs,
-      averagedRatio,
-      strainName: doc.strainName ?? '',
-      description: doc.description ?? '',
+  const buildExportPayload = useCallback(() => {
+    if (activeGelId) {
+      syncActiveGel({ doc: docRef.current, displayAdjustments, inverted });
+    }
+    return gels.map((gel) => {
+      const img = toAnalysisImage(gel.raw);
+      const gelDoc =
+        gel.id === activeGelId
+          ? docRef.current
+          : gel.doc;
+      const pairs = enrichPairs(gelDoc.pairs, gelDoc.rois, img);
+      return {
+        gelId: gel.id,
+        gelName: gel.name,
+        raw: gel.raw,
+        pairs,
+        averagedRatio: computeAveragedRatio(pairs),
+      };
     });
-  }, [raw, enrichedPairs, averagedRatio, doc.strainName, doc.description]);
+  }, [gels, activeGelId, displayAdjustments, inverted, syncActiveGel]);
+
+  const exportExcel = useCallback(async () => {
+    const gelResults = buildExportPayload();
+    await exportGelQuantExcel({
+      gelResults,
+      strainName: sessionMeta.strainName ?? '',
+      description: sessionMeta.description ?? '',
+    });
+  }, [buildExportPayload, sessionMeta]);
+
+  const exportCsv = useCallback(() => {
+    const gelResults = buildExportPayload();
+    exportGelQuantCsv({
+      gelResults,
+      strainName: sessionMeta.strainName ?? '',
+      description: sessionMeta.description ?? '',
+    });
+  }, [buildExportPayload, sessionMeta]);
 
   return {
+    gels,
+    activeGelId,
+    activeGelIndex,
     raw,
     image,
     displayAdjustments,
     setDisplayAdjustments,
+    inverted,
+    setInverted,
     roiTemplate,
     setTemplate,
+    resetTemplateDefaults,
+    DEFAULT_ROI_TEMPLATE,
     loading,
-    loadImage,
+    addGelFromFile,
+    switchToGel,
+    renameGel,
+    goToPrevGel,
+    goToNextGel,
     activeTab,
     setActiveTab,
     pairs: enrichedPairs,
     rois: roisWithMeasurements,
+    allEnrichedPairs,
+    allGelResults,
+    totalCompletePairs,
     activeRoi,
     activeRoiId: doc.activeRoiId,
     creationMode: doc.creationMode,
     setCreationMode,
     incompletePair,
-    strainName: doc.strainName ?? '',
-    description: doc.description ?? '',
+    strainName: sessionMeta.strainName ?? '',
+    description: sessionMeta.description ?? '',
     averagedRatio,
+    sessionAveragedRatio,
     selectRoi,
     createRoiAtClick,
     deleteRoi,
@@ -401,6 +611,7 @@ export function useGelQuantification() {
     canUndo,
     canRedo,
     exportExcel,
+    exportCsv,
     CREATION_MODES,
     ROI_ROLES,
     ROI_GEOMETRY,

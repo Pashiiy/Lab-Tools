@@ -1,0 +1,86 @@
+{
+  "toolId": "qpcr-analyzer",
+  "version": "1.0.0",
+  "title": "qPCR Analysis",
+  "purpose": "Analyze QuantStudio experiments — review amplification curves, assign Cq values, compute ΔΔCt, and export structured results.",
+  "learningTime": "Learn this tool in under 3 minutes",
+  "capabilities": [
+    "Import .eds and Excel exports",
+    "Interactive plate and amplification charts",
+    "ΔΔCt relative quantification",
+    "Standard curve and melt curve views",
+    "Excel export with run metadata"
+  ],
+  "demo": {
+    "type": "workflow",
+    "steps": [
+      "Upload .eds or Excel file",
+      "Review plate layout",
+      "Inspect amplification curves",
+      "Configure ΔΔCt and export"
+    ]
+  },
+  "tour": [
+    {
+      "target": "[data-tour='qpcr-upload']",
+      "title": "Import run data",
+      "body": "Upload a QuantStudio .eds file or compatible Excel export to begin analysis."
+    },
+    {
+      "target": "[data-tour='qpcr-workspace']",
+      "title": "Workspace dashboard",
+      "body": "Review the plate map, amplification traces, and run summary in one unified view."
+    },
+    {
+      "target": "[data-tour='qpcr-toolbar']",
+      "title": "Advanced views",
+      "body": "Open raw data, averaged replicates, ΔΔCt, results tables, and method details."
+    },
+    {
+      "target": "[data-tour='qpcr-export']",
+      "title": "Export",
+      "body": "Download a structured Excel workbook with Ct values, ΔΔCt, and run metadata."
+    }
+  ],
+  "overview": {
+    "purpose": "Parse and analyze real-time PCR instrument files for Cq calling, replicate averaging, and relative gene expression.",
+    "useCase": "Compare target gene expression across samples normalized to a reference gene and calibrator sample.",
+    "inputs": "QuantStudio .eds files or Excel exports with well-level amplification data.",
+    "outputs": "Ct tables, ΔΔCt results, charts, and multi-sheet Excel reports."
+  },
+  "workflow": [
+    { "step": 1, "title": "Upload file", "description": "Load an .eds or Excel file from your instrument export." },
+    { "step": 2, "title": "Review plate", "description": "Confirm sample and target assignments on the interactive plate map." },
+    { "step": 3, "title": "Check amplification", "description": "Inspect curves and threshold; omit failed wells if needed." },
+    { "step": 4, "title": "ΔΔCt analysis", "description": "Set reference gene and control sample in the ΔΔCt panel." },
+    { "step": 5, "title": "Export", "description": "Export Excel for records or downstream statistics." }
+  ],
+  "tips": [
+    "Verify plate layout matches your physical plate before interpreting ΔΔCt.",
+    "Omit wells with abnormal amplification or N/A Ct values.",
+    "Use biological replicates — technical replicates are averaged automatically where applicable.",
+    "Document reference gene and calibrator choices in your lab notebook."
+  ],
+  "faq": [
+    { "q": "Which file formats are supported?", "a": "QuantStudio .eds files and Excel exports compatible with the parser. If import fails, export from QuantStudio as .eds." },
+    { "q": "How is ΔΔCt calculated?", "a": "The tool applies the standard ΔΔCt method using your selected reference gene and control sample." },
+    { "q": "Can I exclude outlier wells?", "a": "Yes. Omit wells from the results view to exclude them from downstream calculations." }
+  ],
+  "video": {
+    "title": "qPCR Analysis workflow",
+    "src": "./help/demos/qpcr-analyzer.mp4",
+    "poster": ""
+  },
+  "keyboardShortcuts": [],
+  "whatsNew": [
+    {
+      "version": "1.0.0",
+      "date": "2026",
+      "items": [
+        "Unified workspace dashboard",
+        "Interactive plate and amplification charts",
+        "ΔΔCt configuration panel"
+      ]
+    }
+  ]
+}

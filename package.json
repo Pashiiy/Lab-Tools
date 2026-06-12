@@ -2,7 +2,7 @@
   "name": "lab-tools",
   "private": true,
   "version": "1.1.0",
-  "description": "Lab Tools — endpoint analysis, colony counting, and gel quantification for microbiology labs",
+  "description": "Lab Tools — endpoint analysis, colony counting, gel quantification, and qPCR analysis for microbiology labs",
   "author": "Bloom Lab",
   "type": "module",
   "main": "electron/main.cjs",
@@ -35,10 +35,12 @@
     "exceljs": "^4.4.0",
     "geotiff": "^3.0.5",
     "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

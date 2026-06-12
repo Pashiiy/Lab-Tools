@@ -18,18 +18,24 @@ function TemplateField({ label, value, onChange }) {
 
 export default function Sidebar({
   raw,
+  gelCount,
   loading,
   displayAdjustments,
+  inverted,
   roiTemplate,
   pairCount,
   completePairCount,
+  totalCompletePairs,
   strainName,
   description,
-  onLoadImage,
+  onAddGel,
   onDisplayAdjustmentsChange,
+  onInvertedChange,
   onTemplateChange,
+  onResetTemplateDefaults,
   onSessionFieldsChange,
-  onExport,
+  onExportExcel,
+  onExportCsv,
 }) {
   const fileRef = useRef(null);
 
@@ -40,35 +46,40 @@ export default function Sidebar({
         <p className="gq-sidebar__note">Target → Control pairs · Fiji IntDen</p>
       </section>
 
-      <section className="gq-sidebar__section">
-        <label className="gq-sidebar__label">Gel image</label>
+      <section className="gq-sidebar__section" data-tour="gq-upload">
+        <label className="gq-sidebar__label">Gel dataset</label>
         <button
           type="button"
           className="gq-btn gq-btn--block"
           disabled={loading}
           onClick={() => fileRef.current?.click()}
         >
-          {loading ? 'Loading…' : raw ? 'Replace image' : 'Upload image'}
+          {loading ? 'Loading…' : raw ? 'Add gel image' : 'Upload gel image'}
         </button>
         <input
           ref={fileRef}
           type="file"
           accept={IMAGE_FILE_ACCEPT}
+          multiple
           className="gq-sidebar__file"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onLoadImage(file);
+          onChange={async (e) => {
+            const files = [...(e.target.files ?? [])];
             e.target.value = '';
+            for (const file of files) {
+              await onAddGel(file);
+            }
           }}
         />
         {raw && (
           <p className="gq-sidebar__meta">
-            {raw.name} · {raw.width}×{raw.height} · {raw.bitDepth}-bit
-          </p>
-        )}
-        {raw && pairCount > 0 && (
-          <p className="gq-sidebar__meta">
-            {pairCount} pair{pairCount !== 1 ? 's' : ''} · {completePairCount} complete
+            {gelCount} gel{gelCount !== 1 ? 's' : ''} in session
+            {pairCount > 0 && (
+              <>
+                {' '}
+                · active: {pairCount} pair{pairCount !== 1 ? 's' : ''} ({completePairCount}{' '}
+                complete)
+              </>
+            )}
           </p>
         )}
       </section>
@@ -76,7 +87,7 @@ export default function Sidebar({
       {raw && (
         <section className="gq-sidebar__section">
           <label className="gq-sidebar__label">ROI template (px)</label>
-          <p className="gq-sidebar__hint">Centered on each click</p>
+          <p className="gq-sidebar__hint">Inner band · outer background — centered on click</p>
           <div className="gq-template-grid">
             <span className="gq-template-grid__heading">Inner</span>
             <TemplateField
@@ -101,13 +112,28 @@ export default function Sidebar({
               onChange={(v) => onTemplateChange({ outerHeight: v })}
             />
           </div>
+          <button
+            type="button"
+            className="gq-btn gq-btn--block gq-sidebar__reset-template"
+            onClick={onResetTemplateDefaults}
+          >
+            Reset to defaults (30×70 / 45×85)
+          </button>
         </section>
       )}
 
       {raw && (
         <section className="gq-sidebar__section">
           <label className="gq-sidebar__label">Display only</label>
-          <p className="gq-sidebar__hint">(RawPixel × contrast) + brightness</p>
+          <p className="gq-sidebar__hint">Does not affect quantification values</p>
+          <label className="gq-sidebar__toggle">
+            <input
+              type="checkbox"
+              checked={!!inverted}
+              onChange={(e) => onInvertedChange(e.target.checked)}
+            />
+            <span>Invert gel</span>
+          </label>
           <div className="gq-slider-row">
             <span className="gq-slider-label">Brightness</span>
             <input
@@ -145,7 +171,7 @@ export default function Sidebar({
       {raw && (
         <section className="gq-sidebar__section gq-sidebar__section--session-meta">
           <label className="gq-sidebar__label">Session metadata</label>
-          <p className="gq-sidebar__hint">Applies to this gel experiment</p>
+          <p className="gq-sidebar__hint">Applies to full dataset export</p>
           <label className="gq-sidebar__field">
             <span className="gq-sidebar__field-label">Strain name</span>
             <input
@@ -171,14 +197,22 @@ export default function Sidebar({
 
       <section className="gq-sidebar__section gq-sidebar__section--grow" />
 
-      <section className="gq-sidebar__section">
+      <section className="gq-sidebar__section" data-tour="gq-export">
         <button
           type="button"
           className="gq-btn gq-btn--primary gq-btn--block"
-          disabled={!raw || completePairCount === 0}
-          onClick={onExport}
+          disabled={!raw || totalCompletePairs === 0}
+          onClick={onExportExcel}
         >
           Export Excel
+        </button>
+        <button
+          type="button"
+          className="gq-btn gq-btn--block"
+          disabled={!raw || totalCompletePairs === 0}
+          onClick={onExportCsv}
+        >
+          Export CSV
         </button>
       </section>
     </aside>

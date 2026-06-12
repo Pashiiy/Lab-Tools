@@ -1,0 +1,50 @@
+/* qPCR — inherits global Lab Tools design system */
+.qpcr-analyzer {
+  --bg: var(--lt-bg);
+  --panel: var(--lt-panel);
+  --border: var(--lt-border);
+  --accent: var(--lt-accent);
+  --positive: var(--lt-success);
+  --warning: var(--lt-warning);
+  --error: var(--lt-danger);
+  --text: var(--lt-text);
+  --text-muted: var(--lt-text-muted);
+  --table-header: var(--lt-panel-raised);
+  --hover: var(--lt-hover);
+  --tab-hover: var(--lt-accent-subtle);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --empty-well: color-mix(in srgb, var(--lt-border) 60%, var(--lt-panel));
+}
+
+.qpcr-analyzer,
+.qpcr-analyzer *,
+.qpcr-analyzer *::before,
+.qpcr-analyzer *::after {
+  box-sizing: border-box;
+}
+
+.qpcr-analyzer {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.qpcr-analyzer .app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qpcr-analyzer .app-main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}

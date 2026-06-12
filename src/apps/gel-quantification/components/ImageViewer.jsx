@@ -1,15 +1,23 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { renderGelToCanvas } from '../utils/gelDisplayRenderer';
+import {
+  displayCacheKey,
+  getCachedDisplay,
+  setCachedDisplay,
+} from '../utils/gelImageCache';
+import RoiOverlay from './RoiOverlay';
 
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 16;
 const CLICK_THRESHOLD_PX = 5;
 
 export default function ImageViewer({
+  gelId,
   raw,
   imageWidth,
   imageHeight,
   displayAdjustments,
+  inverted,
   rois,
   activeRoiId,
   onRoiClick,
@@ -41,10 +49,41 @@ export default function ImageViewer({
   }, [fitToWindow]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !raw) return;
-    renderGelToCanvas(raw, canvas, displayAdjustments);
-  }, [raw, displayAdjustments]);
+    if (!canvasRef.current || !raw) return undefined;
+
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const cacheKey = gelId ? displayCacheKey(gelId, displayAdjustments) : null;
+      const cached = cacheKey ? getCachedDisplay(cacheKey) : null;
+
+      if (cached) {
+        if (canvas.width !== cached.width) canvas.width = cached.width;
+        if (canvas.height !== cached.height) canvas.height = cached.height;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        ctx?.putImageData(cached.imageData, 0, 0);
+        return;
+      }
+
+      renderGelToCanvas(raw, canvas, displayAdjustments);
+
+      if (cacheKey) {
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (ctx) {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          setCachedDisplay(cacheKey, canvas.width, canvas.height, imageData);
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [gelId, raw, displayAdjustments]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -159,32 +198,6 @@ export default function ImageViewer({
     onRoiClick(down.imagePt.x, down.imagePt.y);
   };
 
-  const renderROI = (roi, className, label) => {
-    if (!roi) return null;
-    return (
-      <g>
-        <rect
-          className={className}
-          x={roi.x}
-          y={roi.y}
-          width={roi.width}
-          height={roi.height}
-          vectorEffect="non-scaling-stroke"
-        />
-        {label && (
-          <text
-            className="gq-roi__label"
-            x={roi.x + 2}
-            y={roi.y - 4}
-            vectorEffect="non-scaling-stroke"
-          >
-            {label}
-          </text>
-        )}
-      </g>
-    );
-  };
-
   if (!raw) {
     return (
       <div className="gq-viewer gq-viewer--empty">
@@ -198,6 +211,7 @@ export default function ImageViewer({
     <div
       ref={containerRef}
       className="gq-viewer"
+      data-tour="gq-viewer"
       onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -218,46 +232,14 @@ export default function ImageViewer({
           ref={canvasRef}
           width={imageWidth}
           height={imageHeight}
-          className="gq-viewer__image"
+          className={`gq-viewer__image${inverted ? ' gq-viewer__image--inverted' : ''}`}
         />
-        <svg
-          className="gq-viewer__roi-layer"
+        <RoiOverlay
+          rois={rois}
+          activeRoiId={activeRoiId}
           width={imageWidth}
           height={imageHeight}
-          viewBox={`0 0 ${imageWidth} ${imageHeight}`}
-        >
-          {rois?.map((roi) => {
-            const isActive = roi.id === activeRoiId;
-            const isControl = roi.role === 'CONTROL';
-            const isTarget = roi.role === 'TARGET';
-            const label = roi.displayName || roi.name;
-            const outerClass = [
-              'gq-roi',
-              'gq-roi--outer',
-              isActive ? 'gq-roi--active' : 'gq-roi--inactive',
-              isControl ? 'gq-roi--control' : '',
-              isTarget ? 'gq-roi--target' : '',
-            ]
-              .filter(Boolean)
-              .join(' ');
-            const innerClass = [
-              'gq-roi',
-              'gq-roi--inner',
-              isActive ? 'gq-roi--active' : 'gq-roi--inactive',
-              isControl ? 'gq-roi--control' : '',
-              isTarget ? 'gq-roi--target' : '',
-            ]
-              .filter(Boolean)
-              .join(' ');
-
-            return (
-              <g key={roi.id}>
-                {renderROI(roi.outerROI, outerClass)}
-                {renderROI(roi.innerROI, innerClass, label)}
-              </g>
-            );
-          })}
-        </svg>
+        />
       </div>
       <div className="gq-viewer__zoom-badge">{Math.round(transform.scale * 100)}%</div>
       <div className="gq-viewer__hint-badge">Target / Control click · Shift+click select · Space+drag pan</div>

@@ -12,12 +12,12 @@ export const CREATION_MODES = {
   CONTROL: 'CONTROL',
 };
 
-/** Default global ROI dimensions for click-to-create. */
+/** Default global ROI dimensions for click-to-create (band / background boxes). */
 export const DEFAULT_ROI_TEMPLATE = {
-  innerWidth: 40,
-  innerHeight: 50,
-  outerWidth: 55,
-  outerHeight: 65,
+  innerWidth: 30,
+  innerHeight: 70,
+  outerWidth: 45,
+  outerHeight: 85,
 };
 
 let nextRoiId = 1;

@@ -11,7 +11,9 @@ function fmtCoord(roi) {
 }
 
 const COLUMNS = [
-  { key: 'pairId', label: 'Pair ID', sort: (a, b) => a.index - b.index },
+  { key: 'gelName', label: 'Gel', sort: (a, b) => (a.gelName ?? '').localeCompare(b.gelName ?? '') },
+  { key: 'lane', label: 'Lane', sort: (a, b) => (a.lane ?? 0) - (b.lane ?? 0) },
+  { key: 'pairId', label: 'Pair', sort: (a, b) => a.index - b.index },
   { key: 'targetLabel', label: 'Target Label', sort: (a, b) => (a.target?.displayName ?? '').localeCompare(b.target?.displayName ?? '') },
   { key: 'controlLabel', label: 'Control Label', sort: (a, b) => (a.control?.displayName ?? '').localeCompare(b.control?.displayName ?? '') },
   {
@@ -88,19 +90,29 @@ const COLUMNS = [
 
 export default function DataTable({
   pairs,
-  averagedRatio,
+  gels,
+  activeGelId,
+  sessionAveragedRatio,
   activeRoiId,
   onSelectRoi,
   onUserLabelChange,
+  onSelectGel,
 }) {
-  const [sortKey, setSortKey] = useState('pairId');
+  const [sortKey, setSortKey] = useState('gelName');
   const [sortDir, setSortDir] = useState(1);
   const [showIncomplete, setShowIncomplete] = useState(true);
+  const [gelFilter, setGelFilter] = useState('all');
 
   const filtered = useMemo(() => {
-    if (showIncomplete) return pairs;
-    return pairs.filter((p) => p.complete);
-  }, [pairs, showIncomplete]);
+    let rows = pairs;
+    if (gelFilter !== 'all') {
+      rows = rows.filter((p) => p.gelId === gelFilter);
+    }
+    if (!showIncomplete) {
+      rows = rows.filter((p) => p.complete);
+    }
+    return rows;
+  }, [pairs, gelFilter, showIncomplete]);
 
   const sorted = useMemo(() => {
     const col = COLUMNS.find((c) => c.key === sortKey);
@@ -133,18 +145,36 @@ export default function DataTable({
         <div>
           <h2 className="gq-data-table__title">Data Table</h2>
           <span className="gq-data-table__meta">
-            {filtered.length} row{filtered.length !== 1 ? 's' : ''}
-            {averagedRatio != null && ` · Averaged ratio ${fmt(averagedRatio, 4)}`}
+            {filtered.length} row{filtered.length !== 1 ? 's' : ''} · {gels.length} gel
+            {gels.length !== 1 ? 's' : ''}
+            {gelFilter === 'all' && sessionAveragedRatio != null && ` · Session avg ratio ${fmt(sessionAveragedRatio, 4)}`}
           </span>
         </div>
-        <label className="gq-data-table__filter">
-          <input
-            type="checkbox"
-            checked={showIncomplete}
-            onChange={(e) => setShowIncomplete(e.target.checked)}
-          />
-          Show incomplete pairs
-        </label>
+        <div className="gq-data-table__filters">
+          <label className="gq-data-table__filter">
+            <span>Gel</span>
+            <select
+              className="gq-data-table__select lt-input"
+              value={gelFilter}
+              onChange={(e) => setGelFilter(e.target.value)}
+            >
+              <option value="all">All gels</option>
+              {gels.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="gq-data-table__filter">
+            <input
+              type="checkbox"
+              checked={showIncomplete}
+              onChange={(e) => setShowIncomplete(e.target.checked)}
+            />
+            Show incomplete pairs
+          </label>
+        </div>
       </div>
       <div className="gq-data-table__scroll">
         <table className="gq-data-table__table">
@@ -172,17 +202,33 @@ export default function DataTable({
             {sorted.map((pair) => {
               const activeInPair =
                 pair.target?.id === activeRoiId || pair.control?.id === activeRoiId;
+              const isActiveGel = pair.gelId === activeGelId;
 
               return (
                 <tr
-                  key={pair.id}
+                  key={`${pair.gelId}-${pair.id}`}
                   className={[
                     activeInPair ? 'gq-data-table__row--active' : '',
                     pair.complete ? '' : 'gq-data-table__row--pending',
+                    !isActiveGel ? 'gq-data-table__row--other-gel' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
+                  onClick={() => onSelectGel?.(pair.gelId)}
                 >
+                  <td>
+                    <button
+                      type="button"
+                      className="gq-data-table__gel-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectGel?.(pair.gelId);
+                      }}
+                    >
+                      {pair.gelName}
+                    </button>
+                  </td>
+                  <td>{pair.lane}</td>
                   <td>{pair.name}</td>
                   <td>
                     {pair.target ? (
@@ -191,9 +237,10 @@ export default function DataTable({
                         className="gq-data-table__input"
                         placeholder={pair.target.name}
                         value={pair.target.userLabel}
-                        onChange={(e) => onUserLabelChange(pair.target.id, e.target.value)}
+                        onChange={(e) => onUserLabelChange(pair.target.id, e.target.value, pair.gelId)}
                         onClick={(e) => {
                           e.stopPropagation();
+                          onSelectGel?.(pair.gelId);
                           onSelectRoi(pair.target.id);
                         }}
                       />
@@ -208,9 +255,10 @@ export default function DataTable({
                         className="gq-data-table__input"
                         placeholder={pair.control.name}
                         value={pair.control.userLabel}
-                        onChange={(e) => onUserLabelChange(pair.control.id, e.target.value)}
+                        onChange={(e) => onUserLabelChange(pair.control.id, e.target.value, pair.gelId)}
                         onClick={(e) => {
                           e.stopPropagation();
+                          onSelectGel?.(pair.gelId);
                           onSelectRoi(pair.control.id);
                         }}
                       />
@@ -218,7 +266,7 @@ export default function DataTable({
                       '—'
                     )}
                   </td>
-                  {COLUMNS.slice(3).map((col) => (
+                  {COLUMNS.slice(5).map((col) => (
                     <td key={col.key}>{col.render(pair)}</td>
                   ))}
                 </tr>

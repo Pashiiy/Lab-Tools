@@ -1,0 +1,78 @@
+{
+  "toolId": "colony-counter",
+  "version": "1.0.0",
+  "title": "Colony Counter",
+  "purpose": "Mark colonies on petri dish images, categorize phenotypes, and calculate CFU with dilution correction.",
+  "learningTime": "Learn this tool in under 2 minutes",
+  "capabilities": [
+    "Click-to-mark colony detection",
+    "Multiple phenotype categories",
+    "Dilution-aware CFU calculation",
+    "Image export with overlays",
+    "Undo / redo support"
+  ],
+  "demo": {
+    "type": "workflow",
+    "steps": [
+      "Upload dish image",
+      "Select category",
+      "Mark colonies",
+      "Review CFU count"
+    ]
+  },
+  "tour": [
+    {
+      "target": "[data-tour='cc-upload']",
+      "title": "Load image",
+      "body": "Upload a photograph of your petri dish or plate."
+    },
+    {
+      "target": "[data-tour='cc-categories']",
+      "title": "Categories",
+      "body": "Select or create phenotype categories before marking colonies."
+    },
+    {
+      "target": "[data-tour='cc-workspace']",
+      "title": "Mark colonies",
+      "body": "Click each colony to place a marker. Adjust marker size in the sidebar."
+    },
+    {
+      "target": "[data-tour='cc-export']",
+      "title": "Export",
+      "body": "Save annotated images and colony counts for your records."
+    }
+  ],
+  "overview": {
+    "purpose": "Manual colony counting with categorical classification and CFU estimation.",
+    "useCase": "Quantify colony forming units after serial dilution plating.",
+    "inputs": "Petri dish images; dilution factor; category assignments.",
+    "outputs": "Per-category counts, CFU estimates, annotated image exports."
+  },
+  "workflow": [
+    { "step": 1, "title": "Upload image", "description": "Load a clear photograph of your plate." },
+    { "step": 2, "title": "Configure dilution", "description": "Set dilution factor for CFU calculation." },
+    { "step": 3, "title": "Mark colonies", "description": "Click colonies and assign categories." },
+    { "step": 4, "title": "Export", "description": "Save counts and annotated images." }
+  ],
+  "tips": [
+    "Use consistent lighting when photographing plates.",
+    "Set marker radius to match typical colony size.",
+    "Verify dilution exponent before reporting CFU/mL."
+  ],
+  "faq": [
+    { "q": "How is CFU calculated?", "a": "CFU incorporates colony count, dilution factor, and plated volume according to sidebar settings." }
+  ],
+  "video": {
+    "title": "Colony Counter workflow",
+    "src": "./help/demos/colony-counter.mp4",
+    "poster": ""
+  },
+  "keyboardShortcuts": [],
+  "whatsNew": [
+    {
+      "version": "1.0.0",
+      "date": "2026",
+      "items": ["Category-based colony marking", "Dilution-aware CFU display"]
+    }
+  ]
+}

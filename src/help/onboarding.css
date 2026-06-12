@@ -1,0 +1,559 @@
+/* ── Tool onboarding & help system ── */
+
+.tool-onboarding-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tool-help-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-md);
+  background: var(--lt-panel-raised);
+  color: var(--lt-accent-text);
+  cursor: pointer;
+  box-shadow: var(--lt-shadow-2);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.tool-help-btn:hover {
+  background: var(--lt-accent-subtle);
+  border-color: var(--lt-accent-hover-border);
+}
+
+/* ── Modals ── */
+.onboarding-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.onboarding-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.onboarding-modal__card {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: min(88vh, 640px);
+  display: flex;
+  flex-direction: column;
+  background: var(--lt-panel);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-lg);
+  box-shadow: var(--lt-shadow-1);
+  overflow: hidden;
+}
+
+.onboarding-modal__card--intro {
+  width: min(560px, 100%);
+}
+
+.onboarding-modal__card--compact {
+  width: min(440px, 100%);
+}
+
+.onboarding-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 0;
+}
+
+.onboarding-modal__header--compact {
+  flex-direction: column;
+  align-items: flex-start;
+  padding-bottom: 4px;
+}
+
+.onboarding-modal__progress {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.onboarding-modal__dot {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--lt-border);
+  transition: background 200ms ease;
+}
+
+.onboarding-modal__dot--active,
+.onboarding-modal__dot--done {
+  background: var(--lt-accent);
+}
+
+.onboarding-modal__skip {
+  border: none;
+  background: transparent;
+  color: var(--lt-text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.onboarding-modal__skip:hover {
+  color: var(--lt-text);
+}
+
+.onboarding-modal__body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.onboarding-modal__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lt-accent-text);
+  font-weight: 600;
+}
+
+.onboarding-modal__title {
+  margin: 0 0 12px;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--lt-text);
+  line-height: 1.25;
+}
+
+.onboarding-modal__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--lt-text-muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.onboarding-modal__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--lt-text-muted);
+}
+
+.onboarding-modal__capabilities {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-modal__capabilities li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--lt-text);
+}
+
+.onboarding-modal__check {
+  color: var(--lt-accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.onboarding-modal__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--lt-border);
+  background: var(--lt-panel-raised);
+}
+
+.onboarding-modal__footer-spacer {
+  flex: 1;
+}
+
+.onboarding-btn {
+  padding: 7px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: var(--lt-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.onboarding-btn--primary {
+  background: var(--lt-navy);
+  color: #fff;
+  border-color: var(--lt-navy);
+}
+
+html[data-theme='dark'] .onboarding-btn--primary {
+  background: var(--lt-accent);
+  border-color: var(--lt-accent);
+  color: #0a0e14;
+}
+
+.onboarding-btn--primary:hover {
+  filter: brightness(1.08);
+}
+
+.onboarding-btn--secondary {
+  background: transparent;
+  border-color: var(--lt-border);
+  color: var(--lt-text);
+}
+
+.onboarding-btn--secondary:hover {
+  background: var(--lt-hover);
+}
+
+.onboarding-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--lt-text-muted);
+}
+
+.onboarding-btn--ghost:hover {
+  color: var(--lt-text);
+}
+
+/* ── Demo animation ── */
+.onboarding-demo {
+  margin-top: 8px;
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-md);
+  background: var(--lt-input-bg);
+  overflow: hidden;
+}
+
+.onboarding-demo--video {
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.onboarding-demo__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.onboarding-demo--workflow {
+  padding: 16px;
+}
+
+.onboarding-demo__workflow-track {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+}
+
+.onboarding-demo__workflow-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.35;
+  transform: translateX(0);
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.onboarding-demo__workflow-step--active {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.onboarding-demo__workflow-step--done {
+  opacity: 0.55;
+}
+
+.onboarding-demo__workflow-num {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 50%;
+  background: var(--lt-accent-subtle);
+  color: var(--lt-accent-text);
+  flex-shrink: 0;
+}
+
+.onboarding-demo__workflow-step--active .onboarding-demo__workflow-num {
+  background: var(--lt-accent);
+  color: #fff;
+}
+
+.onboarding-demo__workflow-label {
+  font-size: 0.8125rem;
+  color: var(--lt-text);
+}
+
+.onboarding-demo__workflow-bar {
+  height: 3px;
+  margin-top: 12px;
+  background: var(--lt-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.onboarding-demo__workflow-progress {
+  height: 100%;
+  background: var(--lt-accent);
+  transition: width 600ms ease;
+}
+
+.onboarding-demo--placeholder {
+  padding: 32px;
+  text-align: center;
+}
+
+.onboarding-demo__placeholder-text {
+  font-size: 0.75rem;
+  color: var(--lt-text-muted);
+}
+
+/* ── Guided tour ── */
+.onboarding-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  pointer-events: none;
+}
+
+.onboarding-tour__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  pointer-events: auto;
+}
+
+.onboarding-tour__spotlight {
+  position: fixed;
+  border-radius: var(--lt-radius-md);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+  pointer-events: none;
+  z-index: 1;
+  transition: top 200ms ease, left 200ms ease, width 200ms ease, height 200ms ease;
+}
+
+.onboarding-tour__card {
+  position: fixed;
+  z-index: 2;
+  padding: 16px;
+  background: var(--lt-panel);
+  border: 1px solid var(--lt-border);
+  border-radius: var(--lt-radius-lg);
+  box-shadow: var(--lt-shadow-1);
+  pointer-events: auto;
+}
+
+.onboarding-tour__step-meta {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--lt-text-muted);
+  margin-bottom: 6px;
+}
+
+.onboarding-tour__title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--lt-text);
+}
+
+.onboarding-tour__body {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--lt-text-muted);
+}
+
+.onboarding-tour__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Help panel ── */
+.help-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.help-panel__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.help-panel__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--lt-border);
+  padding-bottom: 8px;
+}
+
+.help-panel__tab {
+  padding: 5px 10px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--lt-radius-sm);
+  background: transparent;
+  color: var(--lt-text-muted);
+  cursor: pointer;
+}
+
+.help-panel__tab:hover {
+  color: var(--lt-text);
+  background: var(--lt-hover);
+}
+
+.help-panel__tab--active {
+  color: var(--lt-accent-text);
+  background: var(--lt-accent-subtle);
+  border-color: var(--lt-accent-hover-border);
+}
+
+.help-panel__content {
+  overflow-y: auto;
+  flex: 1;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--lt-text-muted);
+}
+
+.help-panel__content h3 {
+  margin: 16px 0 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lt-text);
+  font-weight: 600;
+}
+
+.help-panel__content h3:first-child {
+  margin-top: 0;
+}
+
+.help-panel__content p {
+  margin: 0 0 10px;
+}
+
+.help-panel__capabilities {
+  margin: 12px 0 0;
+  padding-left: 18px;
+}
+
+.help-panel__workflow {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.help-panel__workflow li {
+  margin-bottom: 14px;
+}
+
+.help-panel__workflow p {
+  margin: 4px 0 0;
+}
+
+.help-panel__tips {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.help-panel__tips li {
+  margin-bottom: 8px;
+}
+
+.help-panel__faq-item {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--lt-border);
+}
+
+.help-panel__faq-item:last-child {
+  border-bottom: none;
+}
+
+.help-panel__faq dt {
+  font-weight: 600;
+  color: var(--lt-text);
+  margin-bottom: 4px;
+}
+
+.help-panel__faq dd {
+  margin: 0;
+}
+
+.help-panel__video-player {
+  width: 100%;
+  border-radius: var(--lt-radius-md);
+  background: #000;
+  margin-top: 8px;
+}
+
+.help-panel__video-note {
+  margin-top: 10px;
+  font-size: 0.75rem;
+}
+
+.help-panel__video-note code {
+  font-size: 0.6875rem;
+  color: var(--lt-accent-text);
+}
+
+.help-panel__shortcuts {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.help-panel__shortcuts th,
+.help-panel__shortcuts td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--lt-border);
+}
+
+.help-panel__shortcuts kbd {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border: 1px solid var(--lt-border);
+  border-radius: 3px;
+  background: var(--lt-input-bg);
+}
+
+.help-panel__empty {
+  color: var(--lt-text-faint);
+  font-style: italic;
+}

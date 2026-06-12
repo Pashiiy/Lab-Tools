@@ -163,6 +163,7 @@ export default function Sidebar({
           className="btn"
           onClick={onExport}
           disabled={disabled}
+          data-tour="cc-export"
         >
           Save Image
         </button>
