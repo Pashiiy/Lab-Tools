@@ -8,6 +8,13 @@ Conventional commit types for version bumps:
 - `feat:` → minor
 - `BREAKING CHANGE:` or `feat!:` → major
 
+### [1.1.5](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.4...v1.1.5) (2026-06-15)
+
+
+### Bug Fixes
+
+* **build:** ad-hoc sign macOS DMG to eliminate "damaged app" Gatekeeper errors ([e40b874](https://github.com/Pashiiy/Lab-Tools/commit/e40b8746498795de41ddf2d5015ffd073a1a783a))
+
 ### [1.1.4](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.3...v1.1.4) (2026-06-15)
 
 
