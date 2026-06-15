@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  release-mac:
+  build-mac:
     name: macOS DMG
     runs-on: macos-latest
 
@@ -23,12 +23,6 @@ jobs:
         with:
           node-version: 22.13.0
 
-      - name: CI environment diagnostics
-        run: |
-          node -v
-          npm -v
-          ls -la package-lock.json
-
       - name: Install dependencies
         run: npm ci
 
@@ -38,25 +32,25 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run build
 
-      - name: Prepare clean release output directory
-        run: |
-          rm -rf release
-          mkdir -p release
-
-      - name: Package and publish to GitHub Releases
+      - name: Package macOS DMG (ad-hoc signed, no notarization)
         env:
+          # Prevent partial signing from stray CI keychain identities.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac --publish always
+        run: npx electron-builder --mac dmg --publish never
+
+      - name: Verify app signature before release
+        run: npm run verify:mac
 
       - name: Upload macOS DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lab-tools-mac-${{ github.ref_name }}
+          name: mac-dmg
           path: release/*.dmg
           if-no-files-found: error
           retention-days: 30
 
-  release-win:
+  build-win:
     name: Windows NSIS
     runs-on: windows-latest
 
@@ -69,13 +63,6 @@ jobs:
         with:
           node-version: 22.13.0
 
-      - name: CI environment diagnostics
-        shell: bash
-        run: |
-          node -v
-          npm -v
-          ls -la package-lock.json
-
       - name: Install dependencies
         run: npm ci
 
@@ -85,21 +72,42 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run build
 
-      - name: Prepare clean release output directory
-        shell: cmd
-        run: |
-          if exist release rmdir /s /q release
-          mkdir release
-
-      - name: Package and publish to GitHub Releases
+      - name: Package Windows installer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish always
+        run: npx electron-builder --win --publish never
 
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lab-tools-win-${{ github.ref_name }}
+          name: win-installer
           path: release/*.exe
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: GitHub Release
+    needs:
+      - build-mac
+      - build-win
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+
+      - name: Publish release (DMG + installer only)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Lab Tools ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist-artifacts/mac-dmg/*.dmg
+            dist-artifacts/win-installer/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -23,8 +23,9 @@
     "predist:all": "npm run generate-icons",
     "dist": "npm run build && electron-builder",
     "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:all": "npm run build && electron-builder --win --mac",
+    "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --publish never",
+    "dist:all": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --win --publish never",
+    "verify:mac": "bash scripts/verify-mac.sh",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build:mac": "npm run build && npm run dist:mac",
     "electron:build:win": "npm run build && npm run dist:win",
@@ -71,22 +72,40 @@
       "buildResources": "build"
     },
     "files": [
-      "!node_modules",
       "dist/**/*",
       "!dist/**/*.map",
       "electron/**/*"
     ],
     "publish": {
-      "provider": "github"
+      "provider": "github",
+      "publishAutoUpdate": false
     },
     "mac": {
       "category": "public.app-category.medical",
       "icon": "public/icon.icns",
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "notarize": false,
       "electronLanguages": [
         "en"
       ],
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "writeUpdateInfo": false
     },
     "win": {
       "icon": "public/icon.ico",
