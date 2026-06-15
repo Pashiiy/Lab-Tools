@@ -1,5 +1,8 @@
 name: CI
 
+# Non-release validation only. Runs on branch pushes / PRs.
+# This workflow MUST NOT package installers, sign apps, upload DMGs,
+# or create GitHub Releases — that is exclusively release.yml's job.
 on:
   push:
     branches: [main, master]
@@ -7,8 +10,8 @@ on:
     branches: [main, master]
 
 jobs:
-  build:
-    name: Vite production build
+  validate:
+    name: Lint & build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,14 +22,14 @@ jobs:
         with:
           node-version: 22.13.0
 
-      - name: CI environment diagnostics
-        run: |
-          node -v
-          npm -v
-          ls -la package-lock.json
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Build renderer
+      # Non-blocking for now: the codebase has pre-existing lint errors.
+      # Remove `continue-on-error` to make lint a hard gate once they're fixed.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build renderer (no packaging)
         run: npm run build

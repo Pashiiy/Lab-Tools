@@ -21,8 +21,8 @@
     "predist:win": "npm run generate-icons",
     "predist:mac": "npm run generate-icons",
     "predist:all": "npm run generate-icons",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "electron-builder --win",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
     "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --publish never",
     "dist:all": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --win --publish never",
     "verify:mac": "bash scripts/verify-mac.sh",
@@ -30,7 +30,7 @@
     "electron:build:mac": "npm run build && npm run dist:mac",
     "electron:build:win": "npm run build && npm run dist:win",
     "electron:build:all": "npm run dist:all",
-    "release": "standard-version && git push --follow-tags origin main"
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
@@ -58,7 +58,6 @@
     "globals": "^17.6.0",
     "png-to-ico": "^2.1.8",
     "sharp": "^0.34.2",
-    "standard-version": "^9.5.0",
     "vite": "^8.0.12",
     "vite-plugin-pwa": "^1.3.0",
     "wait-on": "^9.0.10"

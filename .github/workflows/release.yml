@@ -1,6 +1,8 @@
-name: Release Lab Tools
+name: Release
 
-# Tag-driven only: npm run release → standard-version → git push --follow-tags → this workflow.
+# SINGLE SOURCE OF TRUTH for releases.
+# Triggered ONLY by version tags pushed via `npm run release` (scripts/release.mjs).
+# This is the ONLY workflow allowed to build installers and create GitHub Releases.
 on:
   push:
     tags:
@@ -13,7 +15,6 @@ jobs:
   build-mac:
     name: macOS DMG
     runs-on: macos-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,9 +27,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate platform icons
-        run: npm run generate-icons
-
       - name: Build renderer (Vite)
         run: npm run build
 
@@ -36,10 +34,9 @@ jobs:
         env:
           # Prevent partial signing from stray CI keychain identities.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac dmg --publish never
+        run: npm run dist:mac
 
-      - name: Verify app signature before release
+      - name: Verify app signature (fails the release on a broken bundle)
         run: npm run verify:mac
 
       - name: Upload macOS DMG artifact
@@ -53,7 +50,6 @@ jobs:
   build-win:
     name: Windows NSIS
     runs-on: windows-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,16 +62,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate platform icons
-        run: npm run generate-icons
-
       - name: Build renderer (Vite)
         run: npm run build
 
       - name: Package Windows installer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish never
+        run: npm run dist:win
 
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
@@ -86,19 +77,18 @@ jobs:
           retention-days: 30
 
   release:
-    name: GitHub Release
+    name: Publish GitHub Release
     needs:
       - build-mac
       - build-win
     runs-on: ubuntu-latest
-
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist-artifacts
 
-      - name: Publish release (DMG + installer only)
+      - name: Publish release (installers only — no raw .app / source zips)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
