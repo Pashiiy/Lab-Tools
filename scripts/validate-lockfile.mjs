@@ -24,11 +24,20 @@ if (!existsSync('package-lock.json')) {
 
 console.log('• Validating package-lock.json against package.json (npm ci --dry-run)…');
 
+// `shell: true` is required so `npm` resolves to `npm.cmd` on Windows runners;
+// without it spawnSync('npm') fails with ENOENT and looks like a false drift.
 const res = spawnSync(
   'npm',
   ['ci', '--dry-run', '--ignore-scripts', '--no-audit', '--no-fund'],
-  { encoding: 'utf8' },
+  { encoding: 'utf8', shell: true },
 );
+
+// A spawn-level failure (npm not found, etc.) is an environment problem, NOT
+// lockfile drift — report it distinctly instead of telling the user to reinstall.
+if (res.error) {
+  console.error(`\n✖ Could not run npm: ${res.error.message}`);
+  process.exit(1);
+}
 
 if (res.status === 0) {
   console.log('✔ Lockfile is in sync — npm ci will succeed deterministically.');
