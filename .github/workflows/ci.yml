@@ -21,9 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.13.0
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install dependencies (npm ci — strict, lockfile-pinned)
         run: npm ci
+
+      - name: Validate lockfile is in sync
+        run: npm run validate:lock
 
       # Non-blocking for now: the codebase has pre-existing lint errors.
       # Remove `continue-on-error` to make lint a hard gate once they're fixed.

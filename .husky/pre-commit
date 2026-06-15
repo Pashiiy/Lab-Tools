@@ -1,0 +1,3 @@
+# Prevent committing a drifted lockfile. Fast, non-destructive (npm ci --dry-run).
+# If this fails, run `npm run sync` and commit the updated package-lock.json.
+npm run validate:lock
