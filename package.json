@@ -6,6 +6,11 @@
   "author": "Bloom Lab",
   "type": "module",
   "main": "electron/main.cjs",
+  "packageManager": "npm@11.6.2",
+  "engines": {
+    "node": ">=22.9.0",
+    "npm": ">=11.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Pashiiy/Lab-Tools.git"

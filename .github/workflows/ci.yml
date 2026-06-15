@@ -23,8 +23,21 @@ jobs:
           node-version: 22.13.0
           cache: npm
 
+      # Pin npm to the exact version declared in package.json "packageManager"
+      # (the version that generated package-lock.json). Node 22.13 ships npm 10.x,
+      # whose resolver disagrees with the npm 11 lockfile and causes the
+      # @emnapi/* "missing from lock file" npm ci failures.
+      - name: Pin npm to packageManager version
+        shell: bash
+        run: |
+          NPM_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")"
+          npm i -g "npm@${NPM_VERSION}"
+          npm -v
+
       - name: Install dependencies (npm ci — strict, lockfile-pinned)
         run: npm ci
+        env:
+          HUSKY: '0'
 
       - name: Validate lockfile is in sync
         run: npm run validate:lock
