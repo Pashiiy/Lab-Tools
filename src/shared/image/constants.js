@@ -1,6 +1,5 @@
 /** Shared file input accept string for all lab tools. */
-export const IMAGE_FILE_ACCEPT =
-  '.jpg,.jpeg,.png,.tif,.tiff,image/jpeg,image/png,image/tiff';
+export const IMAGE_FILE_ACCEPT = 'image/*,.tif,.tiff';
 
 export function isTiffFile(file) {
   if (!file) return false;
@@ -9,6 +8,16 @@ export function isTiffFile(file) {
     name.endsWith('.tif') ||
     name.endsWith('.tiff') ||
     file.type === 'image/tiff'
+  );
+}
+
+/** Accept images even when the browser reports an empty MIME type (common for TIFF). */
+export function isImageFile(file) {
+  if (!file) return false;
+  return (
+    file.type.startsWith('image/') ||
+    isTiffFile(file) ||
+    /\.(jpe?g|png|gif|webp|bmp|tiff?)$/i.test(file.name || '')
   );
 }
 

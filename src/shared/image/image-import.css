@@ -1,0 +1,99 @@
+.image-import-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+  padding: 12px;
+  text-align: center;
+}
+
+.image-import-state--loading {
+  color: var(--lt-text-muted, var(--text-muted));
+}
+
+.image-import-state--error {
+  color: var(--lt-negative, var(--negative, #e05c5c));
+}
+
+.image-import-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--lt-border, var(--border));
+  border-top-color: var(--lt-accent, var(--accent));
+  border-radius: 50%;
+  animation: image-import-spin 0.8s linear infinite;
+}
+
+@keyframes image-import-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.image-import-state__label {
+  font-size: 0.75rem;
+}
+
+.image-import-state__error {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: inherit;
+}
+
+.image-import-state__retry {
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  font-family: inherit;
+  color: var(--lt-text, var(--text));
+  background: transparent;
+  border: 1px solid var(--lt-border, var(--border));
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.image-import-state__retry:hover {
+  border-color: var(--lt-accent, var(--accent));
+  color: var(--lt-accent-text, var(--accent));
+}
+
+.image-upload-error-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--lt-negative, #c44);
+  background: color-mix(in srgb, var(--lt-negative, #e05c5c) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lt-negative, #e05c5c) 35%, transparent);
+  border-radius: 6px;
+}
+
+.image-upload-error-banner__message {
+  margin: 0;
+  flex: 1;
+}
+
+.image-upload-error-banner__dismiss {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.image-upload-error-banner__dismiss:hover {
+  opacity: 1;
+}

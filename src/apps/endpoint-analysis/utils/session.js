@@ -71,6 +71,7 @@ export function normalizeGels(gels) {
   const keys = ['galcen', 'cen3', 'rearrangement', 'reciprocal'];
   const normalized = {};
   keys.forEach((key) => {
+    const gel = gels?.[key] || {};
     normalized[key] = {
       src: null,
       name: null,
@@ -81,7 +82,9 @@ export function normalizeGels(gels) {
       zoom: 100,
       panX: 0,
       panY: 0,
-      ...(gels?.[key] || {}),
+      ...gel,
+      loading: false,
+      error: null,
     };
   });
   return normalized;

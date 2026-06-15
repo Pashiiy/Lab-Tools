@@ -6,8 +6,7 @@ import {
   normalizeGels,
   validateSession,
 } from '../utils/session';
-import { loadImageForTool } from '../../../shared/image/rawImageStore';
-import { createDefaultDisplayDataUrl } from '../../../shared/image/displayRenderer';
+import { loadImageUniversal } from '../../../shared/image/imageLoader';
 
 export const DEFAULT_GEL_ADJUSTMENTS = {
   brightness: 100,
@@ -20,7 +19,7 @@ export const DEFAULT_GEL_ADJUSTMENTS = {
 };
 
 function createEmptyGel() {
-  return { src: null, name: null, ...DEFAULT_GEL_ADJUSTMENTS };
+  return { src: null, name: null, loading: false, error: null, ...DEFAULT_GEL_ADJUSTMENTS };
 }
 
 function createInitialGels() {
@@ -142,21 +141,42 @@ export function useEndpointAnalysis(instanceId) {
   }, []);
 
   const uploadGel = useCallback(async (key, file) => {
+    setGels((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], loading: true, error: null },
+    }));
+
     try {
-      const loaded = await loadImageForTool(file);
-      const displaySrc = createDefaultDisplayDataUrl(loaded.raw);
+      const result = await loadImageUniversal(file);
+      setGels((prev) => ({
+        ...prev,
+        [key]: {
+          ...createEmptyGel(),
+          src: result.displaySrc,
+          name: result.name,
+          naturalWidth: result.naturalWidth,
+          naturalHeight: result.naturalHeight,
+          displayWidth: result.displayWidth,
+          displayHeight: result.displayHeight,
+        },
+      }));
+    } catch (err) {
       setGels((prev) => ({
         ...prev,
         [key]: {
           ...prev[key],
-          src: displaySrc,
-          name: loaded.name,
-          bitDepth: loaded.bitDepth,
+          loading: false,
+          error: err.message || 'Failed to load image',
         },
       }));
-    } catch (err) {
-      alert(err.message || 'Failed to load image');
     }
+  }, []);
+
+  const clearGelError = useCallback((key) => {
+    setGels((prev) => ({
+      ...prev,
+      [key]: createEmptyGel(),
+    }));
   }, []);
 
   const removeGel = useCallback((key) => {
@@ -352,6 +372,7 @@ export function useEndpointAnalysis(instanceId) {
     summaryCounts,
     toggleColonyScore,
     uploadGel,
+    clearGelError,
     removeGel,
     updateGelAdjustment,
     resetGelAdjustments,

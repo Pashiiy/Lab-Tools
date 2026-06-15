@@ -3,6 +3,8 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 /* Left pane — gel image */
@@ -249,19 +251,21 @@
 
 .colony-list-pane__list {
   flex: 1;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .colony-list-row {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
-  min-height: 0;
+  gap: 8px;
+  padding: 0 12px;
+  min-height: 28px;
   border-bottom: 1px solid var(--border-faint);
 }
 

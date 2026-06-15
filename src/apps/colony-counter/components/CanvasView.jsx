@@ -40,16 +40,19 @@ export default function CanvasView({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0, offsetX: 0, offsetY: 0 });
 
+  const viewWidth = image?.displayWidth ?? image?.naturalWidth ?? 0;
+  const viewHeight = image?.displayHeight ?? image?.naturalHeight ?? 0;
+
   const fitToWindow = useCallback(() => {
     const container = containerRef.current;
     if (!container || !image) return;
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    const scale = Math.min(cw / image.naturalWidth, ch / image.naturalHeight);
-    const offsetX = (cw - image.naturalWidth * scale) / 2;
-    const offsetY = (ch - image.naturalHeight * scale) / 2;
+    const scale = Math.min(cw / viewWidth, ch / viewHeight);
+    const offsetX = (cw - viewWidth * scale) / 2;
+    const offsetY = (ch - viewHeight * scale) / 2;
     setTransform({ scale, offsetX, offsetY });
-  }, [image]);
+  }, [image, viewWidth, viewHeight]);
 
   useEffect(() => {
     fitToWindow();
@@ -471,8 +474,8 @@ export default function CanvasView({
         <div
           className="canvas-view"
           style={{
-            width: image.naturalWidth,
-            height: image.naturalHeight,
+            width: viewWidth,
+            height: viewHeight,
           }}
         >
           <img
@@ -480,8 +483,8 @@ export default function CanvasView({
             src={image.src}
             alt="Petri dish"
             className="canvas-view__image"
-            width={image.naturalWidth}
-            height={image.naturalHeight}
+            width={viewWidth}
+            height={viewHeight}
             onLoad={handleImageLoad}
             draggable={false}
           />

@@ -342,9 +342,15 @@ html[data-theme='light'] .shell-sidebar__brand-name {
 
 .shell-topbar__right {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
+}
+
+.shell-topbar__help {
+  align-self: center;
+  margin: 0 4px;
 }
 
 /* ── Session tabs (in top bar) ── */
@@ -460,6 +466,7 @@ html[data-theme='light'] .shell-sidebar__brand-name {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 @keyframes shell-page-in {
@@ -493,6 +500,8 @@ html[data-theme='light'] .shell-sidebar__brand-name {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 /* ── Settings panel ── */
@@ -515,6 +524,28 @@ html[data-theme='light'] .shell-sidebar__brand-name {
 
 .settings-panel__row select {
   min-width: 120px;
+}
+
+.settings-panel__row--checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+.settings-panel__row--checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--lt-accent);
+}
+
+.settings-panel__hint {
+  margin: 4px 0 0;
+  font-size: 0.6875rem;
+  color: var(--lt-text-faint);
 }
 
 .settings-panel__meta {

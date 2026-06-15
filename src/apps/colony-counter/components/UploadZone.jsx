@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { IMAGE_FILE_ACCEPT, isTiffFile } from '../../../shared/image/constants';
+import { IMAGE_FILE_ACCEPT, isImageFile } from '../../../shared/image/constants';
 
 export default function UploadZone({ onUpload }) {
   const [dragOver, setDragOver] = useState(false);
@@ -7,11 +7,7 @@ export default function UploadZone({ onUpload }) {
 
   const handleFile = (file) => {
     if (!file) return;
-    const isImage =
-      file.type.startsWith('image/') ||
-      isTiffFile(file) ||
-      /\.(jpe?g|png|tiff?)$/i.test(file.name);
-    if (!isImage) return;
+    if (!isImageFile(file)) return;
     onUpload(file);
   };
 

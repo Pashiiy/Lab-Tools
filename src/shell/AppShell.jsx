@@ -11,6 +11,7 @@ import GlobalDrawer from '../shared/GlobalDrawer';
 import NotepadPanel from '../shared/NotepadPanel';
 import StrainReferencePanel from '../shared/StrainReferencePanel';
 import ToolOnboardingShell from '../help/ToolOnboardingShell';
+import { ToolHelpProvider } from '../help/ToolHelpContext';
 import './shell.css';
 
 export default function AppShell() {
@@ -74,6 +75,7 @@ export default function AppShell() {
       />
 
       <div className="shell-main">
+        <ToolHelpProvider>
         <TopBar
           theme={theme}
           onToggleTheme={toggleTheme}
@@ -88,6 +90,7 @@ export default function AppShell() {
           onToggleNotepad={toggleNotepad}
           onToggleStrain={toggleStrain}
           view={view}
+          activeToolId={activeToolId}
         />
 
         <div className={`shell-content${view === 'home' ? ' shell-content--home' : ' shell-content--tool'}`}>
@@ -122,6 +125,7 @@ export default function AppShell() {
             );
           })}
         </div>
+        </ToolHelpProvider>
       </div>
 
       <GlobalDrawer

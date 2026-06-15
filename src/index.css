@@ -21,6 +21,24 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+  overflow-x: hidden;
+}
+
+/* Tool root panels — prevent horizontal bleed on narrow viewports */
+.shell-tab-panel .app,
+.tool-onboarding-shell {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Layout debug mode (Settings → Developer) */
+html[data-layout-debug='true'] .shell-tab-panel * {
+  outline: 1px dashed rgba(75, 156, 211, 0.45);
+  outline-offset: -1px;
+}
+
+html[data-layout-debug='true'] .shell-tab-panel [style*='overflow'] {
+  outline-color: rgba(237, 108, 2, 0.55);
 }
 
 /* Minimal scrollbar for data-heavy views */

@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react';
 import TabBar from './TabBar';
 import ThemeToggle from './ThemeToggle';
 import NavUtilityButtons from './NavUtilityButtons';
+import ToolHelpButton from '../help/components/ToolHelpButton';
+import { useToolHelp } from '../help/ToolHelpContext';
+import { hasHelpContent } from '../help/helpRegistry';
 import { TOOL_LIST } from './toolRegistry';
+import { getActiveTools } from './toolManifest';
 
 export default function TopBar({
   theme,
@@ -18,7 +22,9 @@ export default function TopBar({
   onToggleNotepad,
   onToggleStrain,
   view,
+  activeToolId,
 }) {
+  const { openHelp } = useToolHelp();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const isHome = view === 'home';
@@ -26,7 +32,7 @@ export default function TopBar({
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
-    return TOOL_LIST.filter((t) =>
+    return getActiveTools(TOOL_LIST).filter((t) =>
       [t.name, t.description, t.id].join(' ').toLowerCase().includes(q)
     ).slice(0, 6);
   }, [search]);
@@ -112,6 +118,9 @@ export default function TopBar({
       </div>
 
       <div className="shell-topbar__right">
+        {view === 'tool' && activeToolId && hasHelpContent(activeToolId) && (
+          <ToolHelpButton className="shell-topbar__help" onClick={openHelp} />
+        )}
         <NavUtilityButtons
           notepadOpen={notepadOpen}
           strainOpen={strainOpen}

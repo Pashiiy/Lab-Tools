@@ -34,7 +34,7 @@ export const TOOL_MANIFEST = {
   'qpcr-analyzer': {
     category: 'analysis',
     tags: ['qpcr', 'eds', 'ct', 'amplification'],
-    hint: '.eds import · live threshold · ΔΔCt · standard curve',
+    hint: '.eds / .xlsx import · ΔΔCt · time course · standard curves',
     accent: 'var(--lt-brand-blue)',
     Icon: 'qpcr',
   },
@@ -44,6 +44,7 @@ export const TOOL_MANIFEST = {
     hint: 'Bar · scatter · box · violin · PNG/SVG/PDF export',
     accent: 'var(--lt-brand-blue)',
     Icon: 'figure',
+    archived: true,
   },
 };
 
@@ -55,4 +56,12 @@ export function getManifest(toolId) {
     accent: 'var(--lt-accent)',
     Icon: 'endpoint',
   };
+}
+
+export function isToolArchived(toolId) {
+  return Boolean(TOOL_MANIFEST[toolId]?.archived);
+}
+
+export function getActiveTools(toolList) {
+  return toolList.filter((tool) => !isToolArchived(tool.id));
 }

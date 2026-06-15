@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { TOOL_LIST } from './toolRegistry';
-import { TOOL_CATEGORIES, getManifest } from './toolManifest';
+import { TOOL_CATEGORIES, getManifest, getActiveTools } from './toolManifest';
 import { ToolIcon } from './ToolIcons';
 import './home.css';
 
@@ -81,7 +81,7 @@ export default function HomePage({
 }) {
   const enrichedTools = useMemo(
     () =>
-      TOOL_LIST.map((tool) => {
+      getActiveTools(TOOL_LIST).map((tool) => {
         const manifest = getManifest(tool.id);
         return {
           ...tool,

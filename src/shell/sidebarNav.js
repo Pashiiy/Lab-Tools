@@ -8,7 +8,6 @@ export const SIDEBAR_NAV = [
   { type: 'divider' },
   { type: 'item', id: 'qpcr-analyzer', label: 'qPCR Analysis', action: 'tool', toolId: 'qpcr-analyzer', icon: 'qpcr' },
   { type: 'item', id: 'gel-quantification', label: 'Gel Analysis', action: 'tool', toolId: 'gel-quantification', icon: 'gel' },
-  { type: 'item', id: 'figure-generator', label: 'Figure Generator', action: 'tool', toolId: 'figure-generator', icon: 'figure' },
   { type: 'divider' },
   {
     type: 'group',

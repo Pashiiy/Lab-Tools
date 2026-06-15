@@ -1,7 +1,8 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import GelModal from './GelModal';
 import { getImageStyle, handleWheelZoom } from './gelUtils';
-import { IMAGE_FILE_ACCEPT } from '../../../../shared/image/constants';
+import { IMAGE_FILE_ACCEPT, isImageFile } from '../../../../shared/image/constants';
+import { ImageImportSpinner, ImageImportError } from '../../../../shared/image/ImageImportStates';
 
 export default function GelSlot({
   label,
@@ -11,6 +12,7 @@ export default function GelSlot({
   onUpdate,
   onReset,
   onEdit,
+  onClearError,
   isEditing,
 }) {
   const inputRef = useRef(null);
@@ -18,7 +20,7 @@ export default function GelSlot({
   const dragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const [modalOpen, setModalOpen] = useState(false);
-  const hasImage = Boolean(gel.src);
+  const hasImage = Boolean(gel.src) && !gel.loading;
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -29,7 +31,7 @@ export default function GelSlot({
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) onUpload(file);
+    if (file && isImageFile(file)) onUpload(file);
   };
 
   const handleDragOver = (e) => e.preventDefault();
@@ -74,7 +76,11 @@ export default function GelSlot({
   return (
     <>
       <div className="gel-slot">
-        {hasImage ? (
+        {gel.loading ? (
+          <ImageImportSpinner label="Loading..." />
+        ) : gel.error ? (
+          <ImageImportError message={gel.error} onRetry={onClearError} />
+        ) : hasImage ? (
           <>
             <div
               ref={viewportRef}

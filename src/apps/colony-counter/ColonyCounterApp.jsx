@@ -5,6 +5,7 @@ import Workspace from './components/Workspace';
 import RestoreBanner from './components/RestoreBanner';
 import IOSInstallBanner from './components/IOSInstallBanner';
 import './colony-counter.css';
+import '../../shared/image/image-import.css';
 
 export default function ColonyCounterApp({ instanceId, isActive }) {
   const {
@@ -22,6 +23,9 @@ export default function ColonyCounterApp({ instanceId, isActive }) {
     opacity,
     setOpacity,
     image,
+    loadingImage,
+    uploadError,
+    dismissUploadError,
     loadImage,
     addDot,
     removeDot,
@@ -112,6 +116,9 @@ export default function ColonyCounterApp({ instanceId, isActive }) {
           )}
           <Workspace
             image={image}
+            loadingImage={loadingImage}
+            uploadError={uploadError}
+            onDismissUploadError={dismissUploadError}
             dots={dots}
             opacity={opacity}
             onUpload={loadImage}

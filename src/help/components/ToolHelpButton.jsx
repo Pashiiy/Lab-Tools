@@ -1,8 +1,8 @@
-export default function ToolHelpButton({ onClick, label = 'Help' }) {
+export default function ToolHelpButton({ onClick, label = 'Help', className = '' }) {
   return (
     <button
       type="button"
-      className="tool-help-btn"
+      className={`tool-help-btn${className ? ` ${className}` : ''}`}
       onClick={onClick}
       aria-label={label}
       title={label}

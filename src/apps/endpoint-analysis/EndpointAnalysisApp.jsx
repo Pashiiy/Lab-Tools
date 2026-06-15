@@ -10,6 +10,7 @@ import RestoreBanner from './components/RestoreBanner';
 import { useEndpointAnalysis } from './hooks/useEndpointAnalysis';
 import { exportToExcel } from './utils/exportExcel';
 import './App.css';
+import '../../shared/image/image-import.css';
 
 export default function EndpointAnalysisApp({ instanceId }) {
   const {
@@ -23,6 +24,7 @@ export default function EndpointAnalysisApp({ instanceId }) {
     summaryCounts,
     toggleColonyScore,
     uploadGel,
+    clearGelError,
     removeGel,
     updateGelAdjustment,
     resetGelAdjustments,
@@ -81,6 +83,7 @@ export default function EndpointAnalysisApp({ instanceId }) {
             colonies={colonies}
             colonyCount={colonyCount}
             onUpload={uploadGel}
+            onClearError={clearGelError}
             onUpdateAdjustment={updateGelAdjustment}
             onResetAdjustments={resetGelAdjustments}
             onToggle={toggleColonyScore}
@@ -90,6 +93,7 @@ export default function EndpointAnalysisApp({ instanceId }) {
             <GelPanel
               gels={gels}
               onUpload={uploadGel}
+              onClearError={clearGelError}
               onRemove={removeGel}
               onUpdateAdjustment={updateGelAdjustment}
               onResetAdjustments={resetGelAdjustments}

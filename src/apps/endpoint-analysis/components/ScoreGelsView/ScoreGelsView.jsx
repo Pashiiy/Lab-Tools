@@ -15,6 +15,7 @@ export default function ScoreGelsView({
   colonies,
   colonyCount,
   onUpload,
+  onClearError,
   onUpdateAdjustment,
   onResetAdjustments,
   onToggle,
@@ -28,6 +29,7 @@ export default function ScoreGelsView({
         label={GEL_LABELS[activeGel]}
         gel={gel}
         onUpload={(file) => onUpload(activeGel, file)}
+        onClearError={() => onClearError(activeGel)}
         onUpdate={(field, value) => onUpdateAdjustment(activeGel, field, value)}
         onReset={() => onResetAdjustments(activeGel)}
       />

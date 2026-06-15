@@ -1,4 +1,5 @@
 import { REPAIR_COLORS } from '../../constants/categories';
+import { getOverviewRepairProductLabel } from '../../utils/colonyDisplay';
 import ToggleButton from './ToggleButton';
 
 function hexToRgba(hex, alpha) {
@@ -64,7 +65,13 @@ function CategoryBadge({ classification }) {
 
 export default function ColonyRow({ colony, onToggle }) {
   const { classification } = colony;
-  const productColor = REPAIR_COLORS[classification.repairProduct];
+  const repairLabel = getOverviewRepairProductLabel(colony, classification);
+  const productColor =
+    repairLabel.variant === 'failed-pcr'
+      ? 'var(--negative)'
+      : repairLabel.variant === 'unassigned'
+        ? REPAIR_COLORS.UNCLASSIFIED
+        : REPAIR_COLORS[classification.repairProduct];
 
   return (
     <tr
@@ -100,8 +107,13 @@ export default function ColonyRow({ colony, onToggle }) {
         <CategoryBadge classification={classification} />
       </td>
       <td>
-        <span className="repair-product" style={{ color: productColor }}>
-          {classification.repairProduct}
+        <span
+          className={`repair-product${
+            repairLabel.variant === 'failed-pcr' ? ' repair-product--failed-pcr' : ''
+          }`}
+          style={{ color: productColor }}
+        >
+          {repairLabel.text}
         </span>
       </td>
     </tr>

@@ -5,7 +5,7 @@ import {
   patchToolOnboardingState,
   resetToolOnboarding,
 } from './onboardingStorage';
-import ToolHelpButton from './components/ToolHelpButton';
+import { useToolHelp } from './ToolHelpContext';
 import IntroModal from './components/IntroModal';
 import GuidedTour from './components/GuidedTour';
 import HelpPanel from './components/HelpPanel';
@@ -19,6 +19,7 @@ import './onboarding.css';
 export default function ToolOnboardingShell({ toolId, isActive, children }) {
   const content = getHelpContent(toolId);
   const enabled = hasHelpContent(toolId);
+  const { registerHelpHandler } = useToolHelp();
   const promptedRef = useRef(false);
 
   const [introOpen, setIntroOpen] = useState(false);
@@ -76,6 +77,15 @@ export default function ToolOnboardingShell({ toolId, isActive, children }) {
     setHelpOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!isActive || !enabled) {
+      registerHelpHandler(null);
+      return undefined;
+    }
+    registerHelpHandler(() => openHelp('overview'));
+    return () => registerHelpHandler(null);
+  }, [isActive, enabled, openHelp, registerHelpHandler]);
+
   const replayIntro = useCallback(() => {
     setHelpOpen(false);
     resetToolOnboarding(toolId);
@@ -95,7 +105,6 @@ export default function ToolOnboardingShell({ toolId, isActive, children }) {
   return (
     <div className="tool-onboarding-shell">
       {children}
-      <ToolHelpButton onClick={() => openHelp('overview')} />
       <IntroModal
         open={introOpen}
         content={content}

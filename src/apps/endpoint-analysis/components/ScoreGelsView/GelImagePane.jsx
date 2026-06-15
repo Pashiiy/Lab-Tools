@@ -1,7 +1,8 @@
 import { useRef, useCallback, useEffect } from 'react';
 import ImageControlsToolbar from './ImageControlsToolbar';
 import { getImageStyle, handleWheelZoom } from '../GelPanel/gelUtils';
-import { IMAGE_FILE_ACCEPT } from '../../../../shared/image/constants';
+import { IMAGE_FILE_ACCEPT, isImageFile } from '../../../../shared/image/constants';
+import { ImageImportSpinner, ImageImportError } from '../../../../shared/image/ImageImportStates';
 
 export default function GelImagePane({
   label,
@@ -9,12 +10,13 @@ export default function GelImagePane({
   onUpload,
   onUpdate,
   onReset,
+  onClearError,
 }) {
   const inputRef = useRef(null);
   const viewportRef = useRef(null);
   const dragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
-  const hasImage = Boolean(gel.src);
+  const hasImage = Boolean(gel.src) && !gel.loading;
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -25,7 +27,7 @@ export default function GelImagePane({
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) onUpload(file);
+    if (file && isImageFile(file)) onUpload(file);
   };
 
   const handleDragOver = (e) => e.preventDefault();
@@ -70,7 +72,11 @@ export default function GelImagePane({
   return (
     <div className="gel-image-pane">
       <div className="gel-image-pane__viewport-wrap">
-        {hasImage ? (
+        {gel.loading ? (
+          <ImageImportSpinner label="Loading image..." />
+        ) : gel.error ? (
+          <ImageImportError message={gel.error} onRetry={onClearError} />
+        ) : hasImage ? (
           <div
             ref={viewportRef}
             className={`gel-image-pane__viewport${canPan ? ' gel-image-pane__viewport--pannable' : ''}`}

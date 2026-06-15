@@ -95,11 +95,12 @@ export default function ColonyListPane({
         {colonies.map((colony, index) => (
           <div
             key={colony.id}
-            className={`colony-list-row${index % 2 === 1 ? ' colony-list-row--alt' : ''}`}
+            className={`colony-list-row checkbox-row${index % 2 === 1 ? ' colony-list-row--alt' : ''}`}
           >
             <span className="colony-number">{colony.id}</span>
             <ToggleButton
               size="compact"
+              wrapRow={false}
               value={colony[activeGel]}
               onChange={(v) => onToggle(colony.id, activeGel, v)}
             />

@@ -16,8 +16,7 @@ import {
   setInstanceDirty,
   clearInstanceDirty,
 } from '../../../shared/dirtyStateRegistry';
-import { loadImageForTool } from '../../../shared/image/rawImageStore';
-import { createDefaultDisplayDataUrl } from '../../../shared/image/displayRenderer';
+import { loadImageUniversal } from '../../../shared/image/imageLoader';
 
 let nextId = 1;
 
@@ -40,6 +39,9 @@ export function useColonyCounter(instanceId, isActive = true) {
   const [dotRadius, setDotRadius] = useState(12);
   const [opacity, setOpacity] = useState(0.7);
   const [image, setImage] = useState(null);
+  const [loadingImage, setLoadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const fullResCanvasRef = useRef(null);
   const [dilutionMode, setDilutionMode] = useState('preset');
   const [dilutionExponent, setDilutionExponent] = useState(1);
   const [customDilution, setCustomDilution] = useState('');
@@ -113,16 +115,45 @@ export function useColonyCounter(instanceId, isActive = true) {
 
     skipDirtyRef.current = true;
 
-    const img = new Image();
-    img.onload = () => {
+    const displaySrc = session.imageData;
+    const applyImageState = (displayImg, fullDims) => {
       setImage({
-        src: session.imageData,
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
+        src: displaySrc,
+        naturalWidth: fullDims?.width ?? displayImg.naturalWidth,
+        naturalHeight: fullDims?.height ?? displayImg.naturalHeight,
+        displayWidth: displayImg.naturalWidth,
+        displayHeight: displayImg.naturalHeight,
         name: session.imageName,
       });
     };
-    img.src = session.imageData;
+
+    if (session.originalSrc) {
+      const fullImg = new Image();
+      fullImg.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = fullImg.naturalWidth;
+        canvas.height = fullImg.naturalHeight;
+        canvas.getContext('2d').drawImage(fullImg, 0, 0);
+        fullResCanvasRef.current = canvas;
+
+        const displayImg = new Image();
+        displayImg.onload = () => {
+          applyImageState(displayImg, {
+            width: fullImg.naturalWidth,
+            height: fullImg.naturalHeight,
+          });
+        };
+        displayImg.src = displaySrc;
+      };
+      fullImg.src = session.originalSrc;
+    } else {
+      const img = new Image();
+      img.onload = () => {
+        fullResCanvasRef.current = null;
+        applyImageState(img, null);
+      };
+      img.src = displaySrc;
+    }
 
     const sessionDots = session.dots || [];
     nextId = syncDotIdCounter(sessionDots);
@@ -335,17 +366,21 @@ export function useColonyCounter(instanceId, isActive = true) {
   );
 
   const loadImage = useCallback(async (file) => {
+    setLoadingImage(true);
+    setUploadError(null);
+
     try {
-      const loaded = await loadImageForTool(file);
-      const displaySrc = createDefaultDisplayDataUrl(loaded.raw);
+      const result = await loadImageUniversal(file);
+      fullResCanvasRef.current = result.canvas;
 
       skipDirtyRef.current = true;
       setImage({
-        src: displaySrc,
-        naturalWidth: loaded.naturalWidth,
-        naturalHeight: loaded.naturalHeight,
-        name: loaded.name,
-        bitDepth: loaded.bitDepth,
+        src: result.displaySrc,
+        naturalWidth: result.naturalWidth,
+        naturalHeight: result.naturalHeight,
+        displayWidth: result.displayWidth,
+        displayHeight: result.displayHeight,
+        name: result.name,
       });
       setDots([]);
       setHistory([[]]);
@@ -357,8 +392,15 @@ export function useColonyCounter(instanceId, isActive = true) {
         skipDirtyRef.current = false;
       });
     } catch (err) {
-      alert(err.message || 'Failed to load image');
+      fullResCanvasRef.current = null;
+      setUploadError(err.message || 'Failed to load image');
+    } finally {
+      setLoadingImage(false);
     }
+  }, []);
+
+  const dismissUploadError = useCallback(() => {
+    setUploadError(null);
   }, []);
 
   const findDotAt = useCallback(
@@ -379,21 +421,24 @@ export function useColonyCounter(instanceId, isActive = true) {
   const exportImage = useCallback(() => {
     if (!image) return;
 
+    const displayW = image.displayWidth ?? image.naturalWidth;
+    const displayH = image.displayHeight ?? image.naturalHeight;
+    const scaleX = image.naturalWidth / displayW;
+    const scaleY = image.naturalHeight / displayH;
+
     const offscreen = document.createElement('canvas');
     offscreen.width = image.naturalWidth;
     offscreen.height = image.naturalHeight;
     const ctx = offscreen.getContext('2d');
 
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
+    const drawDots = () => {
       dots.forEach((dot) => {
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, dot.radius, 0, 2 * Math.PI);
+        ctx.arc(dot.x * scaleX, dot.y * scaleY, dot.radius * scaleX, 0, 2 * Math.PI);
         ctx.fillStyle = hexToRgba(dot.color, opacity);
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * scaleX;
         ctx.stroke();
       });
 
@@ -401,6 +446,19 @@ export function useColonyCounter(instanceId, isActive = true) {
       link.download = 'colony-count.png';
       link.href = offscreen.toDataURL('image/png');
       link.click();
+    };
+
+    const fullCanvas = fullResCanvasRef.current;
+    if (fullCanvas) {
+      ctx.drawImage(fullCanvas, 0, 0);
+      drawDots();
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, image.naturalWidth, image.naturalHeight);
+      drawDots();
     };
     img.src = image.src;
   }, [image, dots, opacity]);
@@ -419,6 +477,9 @@ export function useColonyCounter(instanceId, isActive = true) {
     if (!image) return;
 
     const session = getSessionSnapshot();
+    if (fullResCanvasRef.current) {
+      session.originalSrc = fullResCanvasRef.current.toDataURL('image/png');
+    }
     const jsonContent = JSON.stringify(session, null, 2);
     const defaultName = sessionName || 'colony-session';
 
@@ -589,6 +650,9 @@ export function useColonyCounter(instanceId, isActive = true) {
     opacity,
     setOpacity: handleSetOpacity,
     image,
+    loadingImage,
+    uploadError,
+    dismissUploadError,
     loadImage,
     addDot,
     removeDot,

@@ -12,6 +12,7 @@ const GEL_KEYS = [
 export default function GelPanel({
   gels,
   onUpload,
+  onClearError,
   onRemove,
   onUpdateAdjustment,
   onResetAdjustments,
@@ -35,6 +36,7 @@ export default function GelPanel({
             isEditing={openDrawer === key}
             onEdit={() => toggleDrawer(key)}
             onUpload={(file) => onUpload(key, file)}
+            onClearError={() => onClearError(key)}
             onRemove={() => {
               onRemove(key);
               if (openDrawer === key) setOpenDrawer(null);
