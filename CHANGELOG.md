@@ -8,6 +8,13 @@ Conventional commit types for version bumps:
 - `feat:` → minor
 - `BREAKING CHANGE:` or `feat!:` → major
 
+### [1.1.4](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.3...v1.1.4) (2026-06-15)
+
+
+### Bug Fixes
+
+* sync lockfile for ci ([2a59d27](https://github.com/Pashiiy/Lab-Tools/commit/2a59d27e8fc5243159258a88c57687ea396efb79))
+
 ### [1.1.3](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.2...v1.1.3) (2026-06-15)
 
 ### [1.1.2](https://github.com/Pashiiy/Lab-Tools/compare/v1.1.1...v1.1.2) (2026-06-12)
