@@ -1,7 +1,7 @@
 {
   "name": "lab-tools",
   "private": true,
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "Lab Tools — endpoint analysis, colony counting, gel quantification, and qPCR analysis for microbiology labs",
   "author": "Bloom Lab",
   "type": "module",
