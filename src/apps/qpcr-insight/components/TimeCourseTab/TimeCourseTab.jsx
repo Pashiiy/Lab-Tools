@@ -17,7 +17,7 @@ const CHART_VIEWS = [
 ];
 
 export default function TimeCourseTab({ timeCourseData, referenceGene }) {
-  const { timepoints, dilutions, targets, data } = timeCourseData;
+  const { timepoints, dilutions, targets, data, hasDilutionData = true } = timeCourseData;
 
   const [t0Timepoint, setT0Timepoint] = useState(timepoints[0]);
   const [timeUnit, setTimeUnit] = useState('h');
@@ -55,6 +55,13 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
 
   const dilutionList = useMemo(() => [...selectedDilutions].sort((a, b) => a - b), [selectedDilutions]);
   const targetList = useMemo(() => [...selectedTargets].sort(), [selectedTargets]);
+
+  // For a dilution-free experiment the charts/tables iterate a single `null`
+  // "dilution" so they match the null-keyed rows without a separate code path.
+  const effectiveDilutions = useMemo(
+    () => (hasDilutionData ? dilutionList : [null]),
+    [hasDilutionData, dilutionList]
+  );
 
   const toggleDilution = (d) => {
     setSelectedDilutions((prev) => {
@@ -95,11 +102,15 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
     );
   }
 
-  if (dilutionList.length === 0 || targetList.length === 0) {
+  if ((hasDilutionData && dilutionList.length === 0) || targetList.length === 0) {
     return (
       <EmptyState
         icon="⏱"
-        message="Select at least one dilution and one target to display the time course."
+        message={
+          hasDilutionData
+            ? 'Select at least one dilution and one target to display the time course.'
+            : 'Select at least one target to display the time course.'
+        }
       />
     );
   }
@@ -131,21 +142,23 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
             />
           </label>
 
-          <div className="qi-tc-config__pills-group">
-            <span className="qi-tc-config__pills-label">Dilution</span>
-            <div className="qi-tc-config__pills">
-              {dilutions.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`qi-tc-pill${selectedDilutions.has(d) ? ' qi-tc-pill--active' : ''}`}
-                  onClick={() => toggleDilution(d)}
-                >
-                  1:{d}
-                </button>
-              ))}
+          {hasDilutionData && (
+            <div className="qi-tc-config__pills-group">
+              <span className="qi-tc-config__pills-label">Dilution</span>
+              <div className="qi-tc-config__pills">
+                {dilutions.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`qi-tc-pill${selectedDilutions.has(d) ? ' qi-tc-pill--active' : ''}`}
+                    onClick={() => toggleDilution(d)}
+                  >
+                    1:{d}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <button
             type="button"
@@ -194,7 +207,7 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
             normalizedData={normalizedData}
             timepoints={timepoints}
             selectedTargets={targetList}
-            selectedDilutions={dilutionList}
+            selectedDilutions={effectiveDilutions}
             targetColors={targetColors}
             timeUnit={timeUnit}
             options={viewOptions}
@@ -206,7 +219,7 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
             normalizedData={normalizedData}
             timepoints={timepoints}
             selectedTargets={targetList}
-            selectedDilutions={dilutionList}
+            selectedDilutions={effectiveDilutions}
             targetColors={targetColors}
             timeUnit={timeUnit}
             options={viewOptions}
@@ -217,7 +230,7 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
             normalizedData={normalizedData}
             timepoints={timepoints}
             selectedTargets={targetList}
-            selectedDilutions={dilutionList}
+            selectedDilutions={effectiveDilutions}
             targetColors={targetColors}
             timeUnit={timeUnit}
             options={viewOptions}
@@ -227,7 +240,8 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
           <RatioChart
             normalizedData={normalizedData}
             timepoints={timepoints}
-            selectedDilutions={dilutionList}
+            selectedDilutions={effectiveDilutions}
+            hasDilutionData={hasDilutionData}
             targets={targets}
             ratioNumerator={ratioNumerator}
             ratioDenominator={ratioDenominator}
@@ -251,12 +265,14 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
         options={chartOptions}
         chartView={chartView}
         onChange={setChartOptions}
+        hasDilutionData={hasDilutionData}
       />
 
       <SummaryTable
         normalizedData={normalizedData}
         selectedTargets={targetList}
-        selectedDilutions={dilutionList}
+        selectedDilutions={effectiveDilutions}
+        hasDilutionData={hasDilutionData}
         t0Timepoint={t0Timepoint}
         timepoints={timepoints}
         chartView={chartView}

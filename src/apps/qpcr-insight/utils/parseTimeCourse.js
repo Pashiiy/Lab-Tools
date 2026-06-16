@@ -1,21 +1,48 @@
-const SAMPLE_REGEX = /^([\d.]+)\s+1[:\/](\d+)$|^1[:\/](\d+)$/;
-
+/**
+ * Parses a sample name into a timepoint and (optional) dilution.
+ *
+ * Recognizes three formats, checked in order:
+ *   1. "{timepoint} 1:{dilution}"  e.g. "0 1:100", "24 1:10000"
+ *   2. "1:{dilution}"               e.g. "1:100"  (implies timepoint = 0)
+ *   3. "{timepoint}"                e.g. "0", "24", "48" (no dilution series)
+ *
+ * Returns { timepoint, dilutionDenominator, hasDilution } or null if unparseable.
+ * dilutionDenominator is null when the sample has no dilution component (format 3).
+ */
 export function parseSampleName(sampleName) {
   const trimmed = sampleName.trim();
-  const match = trimmed.match(SAMPLE_REGEX);
-  if (!match) return null;
 
-  if (match[1] !== undefined) {
+  // Format 1: timepoint + dilution, e.g. "0 1:100"
+  let match = trimmed.match(/^([\d.]+)\s+1\s*[:\/]\s*(\d+)$/);
+  if (match) {
     return {
       timepoint: parseFloat(match[1]),
       dilutionDenominator: parseInt(match[2], 10),
+      hasDilution: true,
     };
   }
 
-  return {
-    timepoint: 0,
-    dilutionDenominator: parseInt(match[3], 10),
-  };
+  // Format 2: dilution only, no timepoint prefix, e.g. "1:100"
+  match = trimmed.match(/^1\s*[:\/]\s*(\d+)$/);
+  if (match) {
+    return {
+      timepoint: 0,
+      dilutionDenominator: parseInt(match[1], 10),
+      hasDilution: true,
+    };
+  }
+
+  // Format 3: plain number only, no dilution, e.g. "24"
+  match = trimmed.match(/^([\d.]+)$/);
+  if (match) {
+    return {
+      timepoint: parseFloat(match[1]),
+      dilutionDenominator: null,
+      hasDilution: false,
+    };
+  }
+
+  return null; // unparseable — sample is excluded from the Time Course tab
 }
 
 export function buildTimeCourseData(ddCtResults) {
@@ -42,12 +69,27 @@ export function buildTimeCourseData(ddCtResults) {
   if (data.length === 0) return null;
 
   const timepoints = [...new Set(data.map((d) => d.timepoint))].sort((a, b) => a - b);
-  const dilutions = [...new Set(data.map((d) => d.dilution))].sort((a, b) => a - b);
+
+  // Only include REAL dilution values — nulls are filtered out, not turned into
+  // a "null" bucket. For a dilution-free experiment this ends up empty.
+  const dilutions = [...new Set(data.map((d) => d.dilution).filter((d) => d !== null))].sort(
+    (a, b) => a - b
+  );
+
   const targets = [...new Set(data.map((d) => d.target))].sort();
 
-  return { timepoints, dilutions, targets, data };
+  // True only when every row carries a real dilution. A pure dilution-free
+  // experiment (e.g. "0", "24", "48") — or an unusual mix — flips this to false,
+  // and the rest of the app then hides/skips all dilution-specific UI & grouping.
+  const hasDilutionData = data.every((d) => d.dilution !== null);
+
+  return { timepoints, dilutions, targets, data, hasDilutionData };
 }
 
+// NOTE: dilution may be `null` for samples with no dilution series (e.g. "24").
+// Object/Map keys coerce null consistently, so lookups keyed by [target][dilution]
+// work correctly without special-casing — do not add a `dilution ?? 'default'`
+// substitution here, as that would make null collide with a real value of 0.
 export function normalizeToT0(data, t0Timepoint) {
   const t0Rq = {};
   data.forEach((row) => {
@@ -151,6 +193,9 @@ export const DILUTION_STROKES = {
   10000: '6 2 1 2',
 };
 
+// Null-safe series label: a dilution-free sample (dilution === null) always
+// renders as just the target name, regardless of the "show dilution labels" toggle.
 export function lineLabel(target, dilution, showDilutionLabels) {
+  if (dilution === null || dilution === undefined) return target;
   return showDilutionLabels ? `${target} 1:${dilution}` : target;
 }

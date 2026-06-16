@@ -19,6 +19,7 @@ export default function RatioChart({
   normalizedData,
   timepoints,
   selectedDilutions,
+  hasDilutionData = true,
   targets,
   ratioNumerator,
   ratioDenominator,
@@ -34,12 +35,17 @@ export default function RatioChart({
   const activeDot = getActiveDotProps(options.showDataPoints);
   const log2 = yAxisScale === 'log2';
 
+  const ratioLabel = `${ratioNumerator} ÷ ${ratioDenominator}`;
+
   const { chartData, lineKeys } = useMemo(() => {
+    // A dilution-free experiment has a single null "dilution" — label that series
+    // with the ratio name itself instead of a meaningless "1:null".
+    const seriesLabel = (dilution) => (dilution === null ? ratioLabel : `1:${dilution}`);
     const ratios = computeTargetRatio(normalizedData, ratioNumerator, ratioDenominator);
     const data = timepoints.map((tp) => {
       const entry = { timepoint: tp, label: `${tp}${timeUnit}` };
       selectedDilutions.forEach((dilution) => {
-        const key = `1:${dilution}`;
+        const key = seriesLabel(dilution);
         const row = ratios.find((r) => r.timepoint === tp && r.dilution === dilution);
         let value = row?.ratio ?? null;
         if (value != null && log2) {
@@ -51,10 +57,10 @@ export default function RatioChart({
     });
 
     const keys = selectedDilutions.map((dilution, i) => ({
-      key: `1:${dilution}`,
+      key: seriesLabel(dilution),
       dilution,
       color: DILUTION_COLORS[i % DILUTION_COLORS.length],
-      strokeDasharray: DILUTION_STROKES[dilution],
+      strokeDasharray: hasDilutionData ? DILUTION_STROKES[dilution] : undefined,
     }));
 
     return { chartData: data, lineKeys: keys };
@@ -62,13 +68,13 @@ export default function RatioChart({
     normalizedData,
     timepoints,
     selectedDilutions,
+    hasDilutionData,
     ratioNumerator,
     ratioDenominator,
+    ratioLabel,
     log2,
     timeUnit,
   ]);
-
-  const ratioLabel = `${ratioNumerator} ÷ ${ratioDenominator}`;
 
   return (
     <div className="qi-tc-chart">

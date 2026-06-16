@@ -359,13 +359,17 @@ function addTimeCourseSheet(
     timeUnit,
     ratioTargetA,
     ratioTargetB,
+    hasDilutionData = true,
   }
 ) {
+  const dilutionLabel = (dilution) => (dilution === null ? '—' : `1:${dilution}`);
   const tcSheet = workbook.addWorksheet('Time Course');
   titleRow(tcSheet, 'Time Course — Normalized to T0', 'A1:H1');
   subtitleRow(
     tcSheet,
-    `T0 = ${t0Timepoint}${timeUnit}  ·  Each target+dilution normalized independently`,
+    `T0 = ${t0Timepoint}${timeUnit}  ·  Each target${
+      hasDilutionData ? '+dilution' : ''
+    } normalized independently`,
     'A2:H2'
   );
   tcSheet.addRow([]);
@@ -389,7 +393,7 @@ function addTimeCourseSheet(
     const color = sampleColor(sampleColors, d.sampleName);
     const row = tcSheet.addRow([
       `${d.timepoint}${timeUnit}`,
-      `1:${d.dilution}`,
+      dilutionLabel(d.dilution),
       d.target,
       d.sampleName,
       d.rq,
@@ -412,7 +416,7 @@ function addTimeCourseSheet(
     const ratioHeaderRow = tcSheet.addRow(['Timepoint', 'Dilution', 'Ratio']);
     styleHeaderRow(ratioHeaderRow);
     ratioData.forEach((r) => {
-      tcSheet.addRow([`${r.timepoint}${timeUnit}`, `1:${r.dilution}`, r.ratio ?? '—']);
+      tcSheet.addRow([`${r.timepoint}${timeUnit}`, dilutionLabel(r.dilution), r.ratio ?? '—']);
     });
   }
 
@@ -531,7 +535,7 @@ export async function exportQPCRInsightExcel({
     addTimeCourseSheet(workbook, timeCourseExport);
   } else if (timeCourseExport?.skipped) {
     omittedNotes.push(
-      'Time Course data was not available — select a reference gene in the ΔΔCt tab and ensure sample names include a time point prefix (e.g. "0 1:100", "24 1:100").'
+      'Time Course data was not available — select a reference gene in the ΔΔCt tab and ensure sample names include a time point (e.g. "0", "24", or "0 1:100", "24 1:100").'
     );
   }
 

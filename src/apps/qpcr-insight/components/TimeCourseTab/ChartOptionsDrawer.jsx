@@ -1,4 +1,10 @@
-export default function ChartOptionsDrawer({ open, options, chartView, onChange }) {
+export default function ChartOptionsDrawer({
+  open,
+  options,
+  chartView,
+  onChange,
+  hasDilutionData = true,
+}) {
   if (!open) return null;
 
   const update = (patch) => onChange({ ...options, [chartView]: { ...options[chartView], ...patch } });
@@ -76,7 +82,7 @@ export default function ChartOptionsDrawer({ open, options, chartView, onChange 
         ]}
       />
 
-      {chartView !== 'ratio' && (
+      {chartView !== 'ratio' && hasDilutionData && (
         <label className="qi-tc-options__checkbox">
           <input
             type="checkbox"
@@ -90,7 +96,7 @@ export default function ChartOptionsDrawer({ open, options, chartView, onChange 
         </label>
       )}
 
-      {chartView !== 'ratio' && (
+      {chartView !== 'ratio' && hasDilutionData && (
         <label className="qi-tc-options__checkbox">
           <input
             type="checkbox"

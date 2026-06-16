@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { computeTargetRatio } from '../../utils/parseTimeCourse';
 
+const dilutionLabel = (dilution) => (dilution === null ? '—' : `1:${dilution}`);
+
 function trendArrow(change) {
   if (change == null || Number.isNaN(change)) return '—';
   if (change > 0.05) return '↑';
@@ -19,6 +21,7 @@ export default function SummaryTable({
   normalizedData,
   selectedTargets,
   selectedDilutions,
+  hasDilutionData = true,
   t0Timepoint,
   timepoints,
   chartView,
@@ -44,7 +47,7 @@ export default function SummaryTable({
         result.push({
           key: `${target}-${dilution}`,
           label: target,
-          dilution: `1:${dilution}`,
+          dilution: dilutionLabel(dilution),
           t0Pct: 100,
           lastPct,
           change,
@@ -69,7 +72,7 @@ export default function SummaryTable({
       return {
         key: `ratio-${dilution}`,
         label: `${ratioNumerator}:${ratioDenominator} ratio`,
-        dilution: `1:${dilution}`,
+        dilution: dilutionLabel(dilution),
         t0Pct: t0Ratio != null ? `${t0Ratio.toFixed(2)}` : '—',
         lastPct: lastRatio != null ? lastRatio.toFixed(2) : null,
         change: changePct,
@@ -96,7 +99,7 @@ export default function SummaryTable({
           <thead>
             <tr>
               <th>Target</th>
-              <th>Dilution</th>
+              {hasDilutionData && <th>Dilution</th>}
               <th>T0</th>
               <th>Last TP</th>
               <th>Change</th>
@@ -107,7 +110,7 @@ export default function SummaryTable({
             {allRows.map((row) => (
               <tr key={row.key}>
                 <td>{row.label}</td>
-                <td className="qi-mono">{row.dilution}</td>
+                {hasDilutionData && <td className="qi-mono">{row.dilution}</td>}
                 <td className="qi-mono">
                   {row.isRatio ? row.t0Pct : `${row.t0Pct.toFixed(1)}%`}
                 </td>

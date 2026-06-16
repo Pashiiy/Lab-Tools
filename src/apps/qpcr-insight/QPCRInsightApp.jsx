@@ -74,6 +74,7 @@ export default function QPCRInsightApp() {
           ratioTargetA,
           ratioTargetB,
           sampleColors,
+          hasDilutionData: timeCourseData.hasDilutionData ?? true,
         };
       } else if (referenceGene && ddCtResults) {
         timeCourseExport = { skipped: true };
