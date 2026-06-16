@@ -1,4 +1,4 @@
-import { clipRoiToImage } from '../../../shared/image/roiUtils';
+import { clipRoiToImage } from '../../../shared/image/roiUtils.js';
 
 /**
  * Fiji-equivalent rectangular ROI measurement on raw pixel array.

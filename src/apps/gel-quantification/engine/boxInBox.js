@@ -1,9 +1,48 @@
 /**
- * Box-in-box background correction (experimental workflow).
+ * Box-in-box background correction — Fiji/Excel Compatibility Mode.
  *
- * I_corrected = (I_inner - I_outer) × (A_inner / (A_outer - A_inner))
+ * The application reproduces the historical Fiji + Excel workflow EXACTLY. All
+ * math is delegated to ./fijiExcelWorkflow.js (the single source of truth) so
+ * there is no second, divergent implementation. See that file for the verbatim
+ * Excel formulas.
  *
- * I_inner / I_outer are Integrated Density (IntDen) values.
+ *   Background = (OuterIntDen - InnerIntDen) * InnerArea / (OuterArea - InnerArea)
+ *   Corrected  = InnerIntDen - Background
+ *   Ratio      = Corrected_A / Corrected_B
+ *
+ * GEOMETRY: the outer ROI is concentric with and fully contains the inner ROI,
+ * so IntDen_outer includes IntDen_inner plus the surrounding frame. This matches
+ * how the ROIs are measured in Fiji and entered into the spreadsheet.
+ */
+import { excelBackground, excelCorrected, excelRatio } from './fijiExcelWorkflow.js';
+
+/**
+ * Excel "Background" total (integrated over the inner area), not a per-pixel mean.
+ * @returns {number|null}
+ */
+export function computeBackground({ intDenInner, intDenOuter, areaInner, areaOuter }) {
+  return excelBackground({
+    innerIntDen: intDenInner,
+    outerIntDen: intDenOuter,
+    innerArea: areaInner,
+    outerArea: areaOuter,
+  });
+}
+
+/**
+ * Per-pixel local background (informational / diagnostic only).
+ * Background / InnerArea = (OuterIntDen - InnerIntDen) / (OuterArea - InnerArea).
+ * @returns {number|null}
+ */
+export function computeBackgroundMean({ intDenInner, intDenOuter, areaInner, areaOuter }) {
+  const ringArea = areaOuter - areaInner;
+  if (!Number.isFinite(ringArea) || ringArea <= 0) return null;
+  return (intDenOuter - intDenInner) / ringArea;
+}
+
+/**
+ * Excel "Corrected Signal" = InnerIntDen - Background.
+ * @returns {number|null}
  */
 export function computeCorrectedIntensity({
   intDenInner,
@@ -11,52 +50,58 @@ export function computeCorrectedIntensity({
   areaInner,
   areaOuter,
 }) {
-  const ringArea = areaOuter - areaInner;
-  if (ringArea <= 0 || areaInner <= 0) {
-    return null;
-  }
-
-  return (intDenInner - intDenOuter) * (areaInner / ringArea);
+  return excelCorrected({
+    innerIntDen: intDenInner,
+    outerIntDen: intDenOuter,
+    innerArea: areaInner,
+    outerArea: areaOuter,
+  });
 }
 
 /**
- * Control-normalized ratio: R = sample_corrected / control_corrected
+ * Excel "Ratio" = sample_corrected / control_corrected.
  */
 export function computeControlRatio(sampleCorrected, controlCorrected) {
-  if (
-    sampleCorrected == null ||
-    controlCorrected == null ||
-    controlCorrected === 0 ||
-    !Number.isFinite(controlCorrected) ||
-    !Number.isFinite(sampleCorrected)
-  ) {
-    return null;
-  }
-  return sampleCorrected / controlCorrected;
+  return excelRatio(sampleCorrected, controlCorrected);
 }
 
 /**
- * Build full measurement record for a sample.
+ * Build full measurement record for a sample, including the intermediate
+ * values needed for Fiji/Excel cross-checking and the diagnostic mode.
  */
 export function buildSampleMeasurements(innerMeas, outerMeas) {
+  const areaInner = innerMeas.area;
+  const areaOuter = outerMeas.area;
+  const intDenInner = innerMeas.intDen;
+  const intDenOuter = outerMeas.intDen;
+
+  const ringArea = areaOuter - areaInner;
+  const background = computeBackground({ intDenInner, intDenOuter, areaInner, areaOuter });
+  const backgroundMean = computeBackgroundMean({ intDenInner, intDenOuter, areaInner, areaOuter });
   const correctedIntensity = computeCorrectedIntensity({
-    intDenInner: innerMeas.intDen,
-    intDenOuter: outerMeas.intDen,
-    areaInner: innerMeas.area,
-    areaOuter: outerMeas.area,
+    intDenInner,
+    intDenOuter,
+    areaInner,
+    areaOuter,
   });
 
   return {
-    areaInner: innerMeas.area,
-    areaOuter: outerMeas.area,
+    areaInner,
+    areaOuter,
+    ringArea,
     meanInner: innerMeas.mean,
     meanOuter: outerMeas.mean,
-    intDenInner: innerMeas.intDen,
-    intDenOuter: outerMeas.intDen,
+    intDenInner,
+    intDenOuter,
+    // RawIntDen aliases: equal to IntDen for uncalibrated images (the gel case).
+    rawIntDenInner: intDenInner,
+    rawIntDenOuter: intDenOuter,
     minInner: innerMeas.min,
     maxInner: innerMeas.max,
     minOuter: outerMeas.min,
     maxOuter: outerMeas.max,
+    background,
+    backgroundMean,
     correctedIntensity,
     intDenIdentityInner: verifyPair(innerMeas),
     intDenIdentityOuter: verifyPair(outerMeas),

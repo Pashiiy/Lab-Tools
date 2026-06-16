@@ -51,6 +51,13 @@ export default function MeasurementReadout({
         <Row label="IntDen" value={fmt(measurements.intDenOuter, 2)} />
       </div>
 
+      <div className="gq-readout__section">
+        <h4 className="gq-readout__heading">Background (Excel)</h4>
+        <Row label="Background" value={fmt(measurements.background, 2)} />
+        <Row label="Ring area" value={measurements.ringArea ?? '—'} unit="px" />
+        <Row label="Bg / px" value={fmt(measurements.backgroundMean, 4)} />
+      </div>
+
       <div className="gq-readout__section gq-readout__section--result">
         <h4 className="gq-readout__heading">Corrected</h4>
         <Row label="Intensity" value={fmt(measurements.correctedIntensity, 4)} />

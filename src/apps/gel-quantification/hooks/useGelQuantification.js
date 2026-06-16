@@ -43,6 +43,7 @@ export function useGelQuantification() {
     ...DEFAULT_DISPLAY_ADJUSTMENTS,
   });
   const [inverted, setInvertedState] = useState(false);
+  const [fijiParityMode, setFijiParityMode] = useState(true);
   const [roiTemplate, setRoiTemplate] = useState({ ...DEFAULT_ROI_TEMPLATE });
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('image');
@@ -570,6 +571,8 @@ export function useGelQuantification() {
     setDisplayAdjustments,
     inverted,
     setInverted,
+    fijiParityMode,
+    setFijiParityMode,
     roiTemplate,
     setTemplate,
     resetTemplateDefaults,

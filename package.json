@@ -20,6 +20,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test:gel": "node src/apps/gel-quantification/engine/__tests__/fijiValidation.test.mjs",
     "preview": "vite preview",
     "generate-icons": "node scripts/generate-icons.mjs",
     "predist": "npm run generate-icons",

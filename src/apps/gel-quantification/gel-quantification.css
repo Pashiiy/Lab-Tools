@@ -1442,3 +1442,250 @@
     border-bottom: 1px solid var(--gq-border);
   }
 }
+
+/* Fiji/Excel Validator */
+.gq-validator {
+  padding: 20px;
+  overflow: auto;
+  color: var(--gq-text);
+}
+
+.gq-validator__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.gq-validator__title {
+  font-size: 1.1rem;
+  margin: 0 0 4px;
+}
+
+.gq-validator__subtitle {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--gq-text-muted);
+  font-size: 0.85rem;
+}
+
+.gq-validator__formulas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  background: var(--gq-panel);
+  border: 1px solid var(--gq-border);
+  border-radius: 8px;
+}
+
+.gq-validator__formulas code {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+  color: var(--gq-text);
+}
+
+.gq-validator__note {
+  color: var(--gq-text-muted);
+  font-size: 0.78rem;
+}
+
+.gq-validator__inputs {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.gq-validator__roi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.gq-validator__roi-title {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  color: var(--gq-accent-text);
+}
+
+.gq-validator__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--gq-text-muted);
+}
+
+.gq-validator__input {
+  width: 130px;
+}
+
+.gq-validator__dims {
+  display: flex;
+  gap: 10px;
+}
+
+.gq-validator__dims .gq-validator__input {
+  width: 56px;
+}
+
+.gq-validator__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.gq-validator__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.gq-validator__table th,
+.gq-validator__table td {
+  text-align: right;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--gq-border);
+}
+
+.gq-validator__table th:first-child,
+.gq-validator__table td:first-child {
+  text-align: left;
+}
+
+.gq-validator__table th {
+  color: var(--gq-text-muted);
+  font-weight: 600;
+}
+
+.gq-validator__group td {
+  text-align: left;
+  font-weight: 600;
+  color: var(--gq-accent-text);
+  background: var(--gq-panel);
+}
+
+.gq-validator__row--match td {
+  color: var(--gq-text);
+}
+
+.gq-validator__row--match td:nth-child(4),
+.gq-validator__row--match td:nth-child(5) {
+  color: #3fb950;
+}
+
+.gq-validator__row--mismatch td:nth-child(4),
+.gq-validator__row--mismatch td:nth-child(5) {
+  color: #f85149;
+  font-weight: 600;
+}
+
+/* Parity Audit */
+.gq-parity__controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.gq-parity__tol {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--gq-text-muted);
+}
+
+.gq-parity__tol-input {
+  width: 70px;
+}
+
+.gq-parity__guarantees {
+  gap: 3px;
+}
+
+.gq-parity__guarantees span {
+  font-size: 0.8rem;
+  color: var(--gq-text-muted);
+}
+
+.gq-parity__panels {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.gq-parity__panel {
+  flex: 1 1 360px;
+  min-width: 340px;
+}
+
+.gq-parity__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.gq-parity__select {
+  flex: 1;
+  min-width: 140px;
+}
+
+.gq-parity__fill {
+  white-space: nowrap;
+}
+
+.gq-parity__verify {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+}
+
+.gq-parity__ok {
+  color: #3fb950;
+}
+
+.gq-parity__bad {
+  color: #f85149;
+  font-weight: 600;
+}
+
+.gq-parity__inputs-table {
+  margin-bottom: 16px;
+}
+
+.gq-parity__divergence {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #f85149;
+  background: rgba(248, 81, 73, 0.08);
+  font-size: 0.85rem;
+}
+
+.gq-parity__divergence--ok {
+  border-color: #3fb950;
+  background: rgba(63, 185, 80, 0.08);
+}
+
+.gq-parity__stage {
+  margin-top: 4px;
+  color: var(--gq-text-muted);
+}
+
+.gq-parity__ratio {
+  margin-top: 20px;
+  max-width: 640px;
+}

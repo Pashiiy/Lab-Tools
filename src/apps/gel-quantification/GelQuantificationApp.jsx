@@ -6,6 +6,8 @@ import ImageViewer from './components/ImageViewer';
 import RoiManager from './components/RoiManager';
 import DataTable from './components/DataTable';
 import GelSelector from './components/GelSelector';
+import FijiExcelValidator from './components/FijiExcelValidator';
+import ParityAudit from './components/ParityAudit';
 import './gel-quantification.css';
 
 export default function GelQuantificationApp() {
@@ -94,6 +96,20 @@ export default function GelQuantificationApp() {
             >
               Data Table
             </button>
+            <button
+              type="button"
+              className={`gq-tabs__btn${gq.activeTab === 'validator' ? ' gq-tabs__btn--active' : ''}`}
+              onClick={() => gq.setActiveTab('validator')}
+            >
+              Fiji/Excel Validator
+            </button>
+            <button
+              type="button"
+              className={`gq-tabs__btn${gq.activeTab === 'parity' ? ' gq-tabs__btn--active' : ''}`}
+              onClick={() => gq.setActiveTab('parity')}
+            >
+              Parity Audit
+            </button>
           </nav>
 
           <div className="gq-workspace">
@@ -148,6 +164,14 @@ export default function GelQuantificationApp() {
                   onGeometryChange={gq.updateRoiGeometry}
                 />
               </>
+            ) : gq.activeTab === 'validator' ? (
+              <FijiExcelValidator />
+            ) : gq.activeTab === 'parity' ? (
+              <ParityAudit
+                rois={gq.rois}
+                fijiParityMode={gq.fijiParityMode}
+                onFijiParityModeChange={gq.setFijiParityMode}
+              />
             ) : (
               <DataTable
                 pairs={gq.allEnrichedPairs}
