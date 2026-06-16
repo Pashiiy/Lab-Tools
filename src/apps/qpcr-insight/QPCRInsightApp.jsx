@@ -1,7 +1,5 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useExperiment } from './hooks/useExperiment';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
 import UploadZone from './components/UploadZone';
 import OverviewTab from './components/OverviewTab/OverviewTab';
 import RawDataTab from './components/RawDataTab/RawDataTab';
@@ -12,9 +10,14 @@ import TimeCourseTab from './components/TimeCourseTab/TimeCourseTab';
 import FormulasPanel, { FormulasButton } from './components/FormulasPanel';
 import { exportQPCRInsightExcel } from './utils/exportExcel';
 import { computeTargetRatio, normalizeToT0 } from './utils/parseTimeCourse';
+import { useToolSnapshot } from '../../shared/persistence/useToolSnapshot';
+import { NAV_ITEMS } from './constants/theme';
+import ToolHeader from '../../shared/ui/ToolHeader';
+import LtTabs from '../../shared/ui/LtTabs';
+import ToolActionBar from '../../shared/ui/ToolActionBar';
 import './qpcr-insight.css';
 
-export default function QPCRInsightApp() {
+export default function QPCRInsightApp({ instanceId, initialState = null }) {
   const fileInputRef = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [formulasOpen, setFormulasOpen] = useState(false);
@@ -26,6 +29,7 @@ export default function QPCRInsightApp() {
     setActiveTab,
     loadFile,
     dismissError,
+    getSnapshot,
     uniqueTargets,
     uniqueSamples,
     sampleColors,
@@ -41,7 +45,9 @@ export default function QPCRInsightApp() {
     standardCurveSeries,
     standardCurves,
     timeCourseData,
-  } = useExperiment();
+  } = useExperiment(initialState);
+
+  useToolSnapshot(instanceId, 'qpcr-analyzer', getSnapshot);
 
   const handleUploadNew = () => {
     fileInputRef.current?.click();
@@ -94,6 +100,28 @@ export default function QPCRInsightApp() {
       setExporting(false);
     }
   };
+
+  const tabs = useMemo(
+    () =>
+      NAV_ITEMS.map(({ id, label }) => {
+        const isStandardCurve = id === 'standard-curve';
+        const isTimeCourse = id === 'time-course';
+        const disabled =
+          (isStandardCurve && standardCurveSeries.length === 0) ||
+          (isTimeCourse && !timeCourseData);
+
+        let title;
+        if (isStandardCurve && disabled) {
+          title = "No dilution series detected in sample names (e.g. '1:10', '1:100').";
+        } else if (isTimeCourse && disabled) {
+          title =
+            "Select a reference gene in the ΔΔCt tab first, and ensure sample names include a time point prefix.";
+        }
+
+        return { id, label, disabled, title };
+      }),
+    [standardCurveSeries.length, timeCourseData]
+  );
 
   if (!experiment) {
     return (
@@ -175,22 +203,35 @@ export default function QPCRInsightApp() {
 
   return (
     <div className="qpcr-insight">
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        standardCurveAvailable={standardCurveSeries.length > 0}
-        timeCourseAvailable={!!timeCourseData}
+      <ToolHeader
+        title="qPCR Analysis"
+        subtitle={experimentName}
+        actions={<FormulasButton onClick={() => setFormulasOpen(true)} />}
       />
-      <div className="qpcr-insight__main">
-        <Header
-          experimentName={experimentName}
-          onUploadNew={handleUploadNew}
-          onExportExcel={handleExportExcel}
-          onOpenFormulas={() => setFormulasOpen(true)}
-          exporting={exporting}
-        />
-        <div className="qpcr-insight__content">{renderTab()}</div>
-      </div>
+
+      <LtTabs
+        tabs={tabs}
+        activeId={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="qPCR analysis views"
+      />
+
+      <ToolActionBar hint={`${uniqueSamples.length} samples · ${uniqueTargets.length} targets`}>
+        <button type="button" className="lt-btn" onClick={handleUploadNew}>
+          Upload new file
+        </button>
+        <button
+          type="button"
+          className="lt-btn lt-btn--primary"
+          onClick={handleExportExcel}
+          disabled={exporting}
+        >
+          {exporting ? 'Exporting…' : 'Export Excel'}
+        </button>
+      </ToolActionBar>
+
+      <div className="qpcr-insight__content">{renderTab()}</div>
+
       <FormulasPanel open={formulasOpen} onClose={() => setFormulasOpen(false)} />
       <input
         ref={fileInputRef}

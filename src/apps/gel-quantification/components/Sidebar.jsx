@@ -34,8 +34,6 @@ export default function Sidebar({
   onTemplateChange,
   onResetTemplateDefaults,
   onSessionFieldsChange,
-  onExportExcel,
-  onExportCsv,
 }) {
   const fileRef = useRef(null);
 
@@ -197,24 +195,6 @@ export default function Sidebar({
 
       <section className="gq-sidebar__section gq-sidebar__section--grow" />
 
-      <section className="gq-sidebar__section" data-tour="gq-export">
-        <button
-          type="button"
-          className="gq-btn gq-btn--primary gq-btn--block"
-          disabled={!raw || totalCompletePairs === 0}
-          onClick={onExportExcel}
-        >
-          Export Excel
-        </button>
-        <button
-          type="button"
-          className="gq-btn gq-btn--block"
-          disabled={!raw || totalCompletePairs === 0}
-          onClick={onExportCsv}
-        >
-          Export CSV
-        </button>
-      </section>
     </aside>
   );
 }

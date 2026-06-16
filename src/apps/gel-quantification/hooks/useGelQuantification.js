@@ -18,10 +18,12 @@ import {
   ROI_ROLES,
 } from '../engine/roiModel';
 import {
+  bumpGelIdPast,
   createGelEntry,
   createInitialDocument,
   updateGelInList,
 } from '../utils/gelDataset';
+import { serializeRaw, deserializeRaw } from '../utils/gelPersistence';
 import { useRoiHistory } from './useRoiHistory';
 import { exportGelQuantExcel } from '../utils/exportExcel';
 import { exportGelQuantCsv } from '../utils/exportCsv';
@@ -33,8 +35,10 @@ import {
   createGelThumbnailDataUrl,
   scheduleThumbnailBuild,
 } from '../utils/gelThumbnail';
+import { trackRecentFile } from '../../../shared/persistence/trackRecentFile.js';
+import { useOpenFileListener } from '../../../shared/persistence/useOpenFileListener.js';
 
-export function useGelQuantification() {
+export function useGelQuantification(initialState = null) {
   const [gels, setGels] = useState([]);
   const [activeGelId, setActiveGelId] = useState(null);
   const [raw, setRaw] = useState(null);
@@ -88,6 +92,32 @@ export function useGelQuantification() {
     },
     [resetHistory]
   );
+
+  // Hydrate from a shell-restored `.labtools` project (once on mount).
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current || !initialState?.gels?.length) return;
+    hydratedRef.current = true;
+    const restored = initialState.gels.map((g) => ({
+      id: g.id,
+      name: g.name,
+      raw: g.raw ? deserializeRaw(g.raw) : null,
+      thumbnailUrl: null,
+      displayAdjustments: { ...DEFAULT_DISPLAY_ADJUSTMENTS, ...g.displayAdjustments },
+      inverted: !!g.inverted,
+      doc: g.doc ?? createInitialDocument(),
+    }));
+    bumpGelIdPast(restored.map((g) => g.id));
+    setGels(restored);
+    setSessionMeta(initialState.sessionMeta ?? { strainName: '', description: '' });
+    if (initialState.fijiParityMode != null) setFijiParityMode(initialState.fijiParityMode);
+    setActiveTab(initialState.activeTab ?? 'image');
+    const active = restored.find((g) => g.id === initialState.activeGelId) ?? restored[0];
+    if (active) {
+      setActiveGelId(active.id);
+      applyGelState(active);
+    }
+  }, [initialState, applyGelState]);
 
   const queueThumbnailForGel = useCallback((gelId, rawStore) => {
     const cached = getCachedThumbnail(gelId);
@@ -249,6 +279,7 @@ export function useGelQuantification() {
         applyGelState(entry);
         setActiveTab('image');
         queueThumbnailForGel(entry.id, loadedRaw);
+        trackRecentFile(file, 'gel-quantification').catch(() => {});
       } catch (err) {
         alert(err.message || 'Failed to load image');
       } finally {
@@ -257,6 +288,8 @@ export function useGelQuantification() {
     },
     [applyGelState, queueThumbnailForGel]
   );
+
+  useOpenFileListener('gel-quantification', addGelFromFile);
 
   const renameGel = useCallback((gelId, name) => {
     setGels((prev) => {
@@ -561,7 +594,31 @@ export function useGelQuantification() {
     });
   }, [buildExportPayload, sessionMeta]);
 
+  // JSON-safe snapshot for unified workspace autosave / `.labtools` export.
+  const getSnapshot = useCallback(() => {
+    if (gels.length === 0) return undefined;
+    const serializedGels = gels.map((gel) => {
+      const isActive = gel.id === activeGelId;
+      return {
+        id: gel.id,
+        name: gel.name,
+        displayAdjustments: isActive ? displayAdjustments : gel.displayAdjustments,
+        inverted: isActive ? inverted : gel.inverted,
+        doc: isActive ? docRef.current : gel.doc,
+        raw: gel.raw ? serializeRaw(gel.raw) : null,
+      };
+    });
+    return {
+      gels: serializedGels,
+      activeGelId,
+      activeTab,
+      sessionMeta,
+      fijiParityMode,
+    };
+  }, [gels, activeGelId, displayAdjustments, inverted, activeTab, sessionMeta, fijiParityMode]);
+
   return {
+    getSnapshot,
     gels,
     activeGelId,
     activeGelIndex,

@@ -3,16 +3,25 @@ import { TOOLS } from './toolRegistry';
 
 let nextTabId = 1;
 
-function createTab(toolId) {
+function createTab(toolId, initialState = null, id = null) {
   const tool = TOOLS[toolId];
   if (!tool) return null;
 
   return {
-    id: `tab-${nextTabId++}`,
+    id: id ?? `tab-${nextTabId++}`,
     toolId,
     toolName: tool.name,
     createdAt: Date.now(),
+    initialState,
   };
+}
+
+/** Keep the id counter ahead of any restored `tab-N` ids to avoid collisions. */
+function bumpCounterPast(ids) {
+  for (const id of ids) {
+    const match = /tab-(\d+)/.exec(id ?? '');
+    if (match) nextTabId = Math.max(nextTabId, parseInt(match[1], 10) + 1);
+  }
 }
 
 export function useTabManager({ onToolOpened } = {}) {
@@ -73,6 +82,28 @@ export function useTabManager({ onToolOpened } = {}) {
     setView('home');
   }, []);
 
+  /**
+   * Restore a full workspace from a saved `.labtools` project. Recreates tabs
+   * with their ORIGINAL ids (so tool state maps correctly) and attaches each
+   * tool's serialized state as `initialState` for the tool hook to hydrate.
+   */
+  const restoreWorkspace = useCallback((workspace, toolStates = {}) => {
+    const restoredTabs = (workspace?.tabs ?? [])
+      .map((t) => createTab(t.toolId, toolStates[t.id]?.state ?? null, t.id))
+      .filter(Boolean);
+    bumpCounterPast(restoredTabs.map((t) => t.id));
+    setTabs(restoredTabs);
+    if (restoredTabs.length === 0) {
+      setActiveTabId(null);
+      setView('home');
+      return;
+    }
+    const active =
+      restoredTabs.find((t) => t.id === workspace.activeTabId)?.id ?? restoredTabs[0].id;
+    setActiveTabId(active);
+    setView('tool');
+  }, []);
+
   return {
     tabs,
     tabLabels,
@@ -82,5 +113,6 @@ export function useTabManager({ onToolOpened } = {}) {
     selectTab,
     closeTab,
     goHome,
+    restoreWorkspace,
   };
 }

@@ -359,3 +359,160 @@ html[data-theme='light'] {
 .lt-table__sortable:hover {
   color: var(--lt-text);
 }
+
+/* ── Motion tokens ── */
+:root {
+  --lt-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --lt-duration-fast: 120ms;
+  --lt-duration-normal: 200ms;
+  --lt-duration-slow: 240ms;
+  --lt-sidebar-width: 232px;
+  --lt-tool-header-height: 40px;
+}
+
+/* ── Unified in-tool tabs (matches shell-tabs) ── */
+.lt-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 1px solid var(--lt-border);
+  background: var(--lt-panel);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.lt-tabs__tab {
+  position: relative;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--lt-text-muted);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--lt-duration-fast) ease, background var(--lt-duration-fast) ease;
+  white-space: nowrap;
+}
+
+.lt-tabs__tab:hover:not(:disabled) {
+  color: var(--lt-text);
+  background: var(--lt-hover);
+}
+
+.lt-tabs__tab--active {
+  color: var(--lt-text);
+  background: var(--lt-bg);
+}
+
+.lt-tabs__tab--active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--lt-accent);
+}
+
+.lt-tabs__tab--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lt-tabs__badge {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: var(--lt-radius-sm);
+  background: var(--lt-accent-subtle);
+  color: var(--lt-accent-text);
+  font-size: 0.6rem;
+  font-family: 'DM Mono', ui-monospace, monospace;
+}
+
+/* ── Tool header ── */
+.lt-tool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lt-space-3);
+  min-height: var(--lt-tool-header-height);
+  padding: 0 var(--lt-space-4);
+  border-bottom: 1px solid var(--lt-border);
+  background: var(--lt-panel);
+  flex-shrink: 0;
+}
+
+.lt-tool-header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--lt-space-2);
+  min-width: 0;
+}
+
+.lt-tool-header__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lt-text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lt-tool-header__subtitle {
+  font-size: 0.6875rem;
+  color: var(--lt-text-muted);
+  white-space: nowrap;
+}
+
+.lt-tool-header__badge {
+  padding: 2px 6px;
+  border-radius: var(--lt-radius-sm);
+  border: 1px solid var(--lt-border);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.5625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lt-text-faint);
+}
+
+.lt-tool-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Tool action bar (export row — consistent slot below header) ── */
+.lt-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lt-space-2);
+  padding: 6px var(--lt-space-4);
+  border-bottom: 1px solid var(--lt-border);
+  background: color-mix(in srgb, var(--lt-bg) 50%, var(--lt-panel));
+  flex-shrink: 0;
+}
+
+.lt-action-bar__hint {
+  font-size: 0.6875rem;
+  color: var(--lt-text-faint);
+}
+
+.lt-action-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-tabs__tab,
+  .lt-btn {
+    transition: none;
+  }
+}

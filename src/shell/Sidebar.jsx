@@ -1,31 +1,35 @@
 import { useState } from 'react';
-import { SIDEBAR_NAV } from './sidebarNav';
+import { SIDEBAR_TOOLS } from './sidebarNav';
 import { ToolIcon } from './ToolIcons';
+import { TOOLS } from './toolRegistry';
 
-function NavIcon({ name }) {
-  const icons = {
-    dashboard: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-    ),
-    tools: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-      </svg>
-    ),
-    settings: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-      </svg>
-    ),
-  };
-  if (icons[name]) return icons[name];
-  return <ToolIcon name={name} />;
+function formatWhen(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function SidebarSection({ label, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="shell-sidebar__section">
+      <button
+        type="button"
+        className="shell-sidebar__section-toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="shell-sidebar__section-label">{label}</span>
+        <span className="shell-sidebar__chevron">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && <div className="shell-sidebar__section-body">{children}</div>}
+    </div>
+  );
 }
 
 export default function Sidebar({
@@ -33,95 +37,111 @@ export default function Sidebar({
   activeToolId,
   onGoHome,
   onOpenTool,
-  onOpenSettings,
+  recentProjects = [],
+  recentFiles = [],
+  onOpenRecentProject,
+  onOpenRecentFile,
+  onImportProject,
 }) {
-  const [toolsExpanded, setToolsExpanded] = useState(true);
-
-  const isActive = (item) => {
-    if (item.action === 'home') return view === 'home';
-    if (item.action === 'settings') return false;
-    if (item.toolId) return view === 'tool' && activeToolId === item.toolId;
-    return false;
-  };
-
-  const handleClick = (item) => {
-    if (item.action === 'home') onGoHome();
-    else if (item.action === 'settings') onOpenSettings();
-    else if (item.toolId) onOpenTool(item.toolId);
-  };
-
   return (
     <aside className="shell-sidebar" aria-label="Application navigation">
-      <div className="shell-sidebar__brand">
+      <button type="button" className="shell-sidebar__brand" onClick={onGoHome}>
         <span className="shell-sidebar__brand-mark" aria-hidden />
         <div className="shell-sidebar__brand-text">
           <span className="shell-sidebar__brand-name">Lab Tools</span>
           <span className="shell-sidebar__brand-sub">Bloom Lab</span>
         </div>
-      </div>
+      </button>
 
-      <nav className="shell-sidebar__nav">
-        {SIDEBAR_NAV.map((item, i) => {
-          if (item.type === 'divider') {
-            return <div key={`div-${i}`} className="shell-sidebar__divider" />;
-          }
-
-          if (item.type === 'group') {
-            return (
-              <div key={item.id} className="shell-sidebar__group">
-                <button
-                  type="button"
-                  className="shell-sidebar__group-toggle"
-                  onClick={() => setToolsExpanded((v) => !v)}
-                  aria-expanded={toolsExpanded}
-                >
-                  <span className="shell-sidebar__icon"><NavIcon name={item.icon} /></span>
-                  <span className="shell-sidebar__label">{item.label}</span>
-                  <span className="shell-sidebar__chevron">{toolsExpanded ? '▾' : '▸'}</span>
-                </button>
-                <div
-                  className={`shell-sidebar__children${
-                    toolsExpanded ? ' shell-sidebar__children--open' : ''
-                  }`}
-                >
-                  <div className="shell-sidebar__children-inner">
-                    {item.children.map((child) => (
-                      <button
-                        key={child.id}
-                        type="button"
-                        className={`shell-sidebar__item shell-sidebar__item--child${
-                          view === 'tool' && activeToolId === child.toolId
-                            ? ' shell-sidebar__item--active'
-                            : ''
-                        }`}
-                        onClick={() => onOpenTool(child.toolId)}
-                      >
-                        <span className="shell-sidebar__icon shell-sidebar__icon--sm">
-                          <NavIcon name={child.icon} />
-                        </span>
-                        <span className="shell-sidebar__label">{child.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          const active = isActive(item);
-          return (
+      <div className="shell-sidebar__scroll">
+        <SidebarSection label="Tools">
+          <nav className="shell-sidebar__nav">
             <button
-              key={item.id}
               type="button"
-              className={`shell-sidebar__item${active ? ' shell-sidebar__item--active' : ''}`}
-              onClick={() => handleClick(item)}
+              className={`shell-sidebar__item${view === 'home' ? ' shell-sidebar__item--active' : ''}`}
+              onClick={onGoHome}
             >
-              <span className="shell-sidebar__icon"><NavIcon name={item.icon} /></span>
-              <span className="shell-sidebar__label">{item.label}</span>
+              <span className="shell-sidebar__icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </span>
+              <span className="shell-sidebar__label">Dashboard</span>
             </button>
-          );
-        })}
-      </nav>
+            {SIDEBAR_TOOLS.map((tool) => (
+              <button
+                key={tool.id}
+                type="button"
+                className={`shell-sidebar__item${
+                  view === 'tool' && activeToolId === tool.id ? ' shell-sidebar__item--active' : ''
+                }`}
+                onClick={() => onOpenTool(tool.id)}
+              >
+                <span className="shell-sidebar__icon">
+                  <ToolIcon name={tool.icon} />
+                </span>
+                <span className="shell-sidebar__label">{tool.label}</span>
+              </button>
+            ))}
+          </nav>
+        </SidebarSection>
+
+        {(recentProjects.length > 0 || onImportProject) && (
+          <SidebarSection label="Recent projects">
+            {recentProjects.length === 0 ? (
+              <p className="shell-sidebar__empty">No saved projects yet.</p>
+            ) : (
+              <ul className="shell-sidebar__recents">
+                {recentProjects.slice(0, 8).map((p) => (
+                  <li key={p.projectId}>
+                    <button
+                      type="button"
+                      className="shell-sidebar__recent"
+                      onClick={() => onOpenRecentProject?.(p.projectId)}
+                      title={p.name}
+                    >
+                      <span className="shell-sidebar__recent-name">{p.name}</span>
+                      <span className="shell-sidebar__recent-meta">
+                        {p.tabCount} tab{p.tabCount !== 1 ? 's' : ''} · {formatWhen(p.lastModifiedAt)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {onImportProject && (
+              <button type="button" className="shell-sidebar__link" onClick={onImportProject}>
+                Import project…
+              </button>
+            )}
+          </SidebarSection>
+        )}
+
+        {recentFiles.length > 0 && (
+          <SidebarSection label="Recent files">
+            <ul className="shell-sidebar__recents">
+              {recentFiles.slice(0, 6).map((f) => (
+                <li key={f.id}>
+                  <button
+                    type="button"
+                    className="shell-sidebar__recent"
+                    onClick={() => onOpenRecentFile?.(f)}
+                    title={f.name}
+                  >
+                    <span className="shell-sidebar__recent-name">{f.name}</span>
+                    <span className="shell-sidebar__recent-meta">
+                      {TOOLS[f.toolId]?.name ?? f.toolId} · {formatWhen(f.lastOpenedAt)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </SidebarSection>
+        )}
+      </div>
     </aside>
   );
 }

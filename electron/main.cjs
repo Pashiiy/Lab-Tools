@@ -6,6 +6,35 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 let mainWindow = null;
 
+/* ------------------------------------------------------------------ *
+ * Lightweight persistent JSON store (electron-store equivalent).
+ * Lives in userData so it survives app updates and restarts.
+ * ------------------------------------------------------------------ */
+const STORE_PATH = path.join(app.getPath('userData'), 'labtools-store.json');
+let storeCache = null;
+
+function readStore() {
+  if (storeCache) return storeCache;
+  try {
+    storeCache = JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8'));
+  } catch {
+    storeCache = {};
+  }
+  return storeCache;
+}
+
+let writeTimer = null;
+function scheduleWrite() {
+  if (writeTimer) clearTimeout(writeTimer);
+  writeTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(STORE_PATH, JSON.stringify(storeCache ?? {}), 'utf-8');
+    } catch (err) {
+      console.error('Failed to persist labtools store:', err);
+    }
+  }, 150);
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
@@ -43,28 +72,44 @@ function createWindow() {
   });
 }
 
-ipcMain.handle('save-session', async (_event, { defaultName, jsonContent }) => {
+// Persistent key/value store (sessions, recents, settings).
+ipcMain.handle('store:get', (_event, key) => readStore()[key] ?? null);
+ipcMain.handle('store:set', (_event, key, value) => {
+  readStore()[key] = value;
+  scheduleWrite();
+  return true;
+});
+ipcMain.handle('store:delete', (_event, key) => {
+  delete readStore()[key];
+  scheduleWrite();
+  return true;
+});
+ipcMain.handle('store:keys', () => Object.keys(readStore()));
+
+// Unified `.labtools` project export.
+ipcMain.handle('project:save', async (_event, { defaultName, content }) => {
   const result = await dialog.showSaveDialog({
-    title: 'Save Colony Counter Session',
-    defaultPath: `${defaultName}.colonycount`,
+    title: 'Export Lab Tools Project',
+    defaultPath: `${defaultName}.labtools`,
     filters: [
-      { name: 'Colony Counter Sessions', extensions: ['colonycount'] },
+      { name: 'Lab Tools Project', extensions: ['labtools'] },
       { name: 'JSON', extensions: ['json'] },
     ],
   });
   if (!result.canceled && result.filePath) {
-    fs.writeFileSync(result.filePath, jsonContent, 'utf-8');
+    fs.writeFileSync(result.filePath, content, 'utf-8');
     return { success: true, filePath: result.filePath };
   }
   return { success: false };
 });
 
-ipcMain.handle('load-session', async () => {
+// Unified `.labtools` project import (also accepts legacy `.colonycount`).
+ipcMain.handle('project:open', async () => {
   const result = await dialog.showOpenDialog({
-    title: 'Open Colony Counter Session',
+    title: 'Open Lab Tools Project',
     filters: [
-      { name: 'Colony Counter Sessions', extensions: ['colonycount'] },
-      { name: 'JSON', extensions: ['json'] },
+      { name: 'Lab Tools Project', extensions: ['labtools'] },
+      { name: 'Legacy / JSON', extensions: ['colonycount', 'json'] },
     ],
     properties: ['openFile'],
   });

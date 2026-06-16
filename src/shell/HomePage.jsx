@@ -72,12 +72,121 @@ function getGreeting() {
   return 'Good evening';
 }
 
+function formatWhen(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function RecentFiles({ files, onOpen, onRemove, onClear, toolNames }) {
+  if (files.length === 0) return null;
+  return (
+    <section className="home__continue home-animate" style={{ '--stagger': 2 }}>
+      <div className="home__continue-head">
+        <h2 className="home__section-label">Recent files</h2>
+        <button type="button" className="home__import-btn" onClick={onClear}>
+          Clear history
+        </button>
+      </div>
+      <div className="home__project-grid">
+        {files.map((f, i) => (
+          <div key={f.id} className="home__project home__project--file" style={{ '--stagger': i }}>
+            <button type="button" className="home__project-main" onClick={() => onOpen(f)}>
+              <span className="home__project-name">{f.name}</span>
+              <span className="home__project-meta">
+                {toolNames[f.toolId] ?? f.toolId} · {formatWhen(f.lastOpenedAt)}
+              </span>
+            </button>
+            <div className="home__project-actions">
+              <button type="button" aria-label="Remove from recent files" onClick={() => onRemove(f.id)}>
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ContinueWorking({ projects, onOpen, onRename, onDelete, onImport }) {
+  return (
+    <section className="home__continue home-animate" style={{ '--stagger': 1 }}>
+      <div className="home__continue-head">
+        <h2 className="home__section-label">Continue working</h2>
+        <button type="button" className="home__import-btn" onClick={onImport}>
+          Import project…
+        </button>
+      </div>
+      {projects.length === 0 ? (
+        <p className="home__continue-empty">
+          No saved projects yet. Your work autosaves — saved projects appear here.
+        </p>
+      ) : (
+        <div className="home__project-grid">
+          {projects.map((p, i) => (
+            <div key={p.projectId} className="home__project" style={{ '--stagger': i }}>
+              <button
+                type="button"
+                className="home__project-main"
+                onClick={() => onOpen(p.projectId)}
+              >
+                <span className="home__project-name">{p.name}</span>
+                <span className="home__project-meta">
+                  {p.tabCount} tab{p.tabCount !== 1 ? 's' : ''} · {formatWhen(p.lastModifiedAt)}
+                </span>
+              </button>
+              <div className="home__project-actions">
+                <button
+                  type="button"
+                  aria-label="Rename project"
+                  onClick={() => {
+                    const name = window.prompt('Rename project', p.name);
+                    if (name && name.trim()) onRename(p.projectId, name.trim());
+                  }}
+                >
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  aria-label="Delete project"
+                  onClick={() => {
+                    if (window.confirm(`Delete project "${p.name}"? This cannot be undone.`)) {
+                      onDelete(p.projectId);
+                    }
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function HomePage({
   onOpenTool,
   favorites,
   recent,
   onToggleFavorite,
   isFavorite,
+  recentProjects = [],
+  onOpenRecentProject,
+  onRenameRecentProject,
+  onDeleteRecentProject,
+  onImportProject,
+  recentFiles = [],
+  onOpenRecentFile,
+  onRemoveRecentFile,
+  onClearRecentFiles,
 }) {
   const enrichedTools = useMemo(
     () =>
@@ -105,6 +214,11 @@ export default function HomePage({
     [enrichedTools, favorites]
   );
 
+  const toolNames = useMemo(
+    () => Object.fromEntries(enrichedTools.map((t) => [t.id, t.name])),
+    [enrichedTools]
+  );
+
   const grouped = useMemo(() => {
     const order = Object.values(TOOL_CATEGORIES).sort((a, b) => a.order - b.order);
     return order
@@ -128,6 +242,22 @@ export default function HomePage({
           Molecular biology analysis workspace — open a module to begin a session.
         </p>
       </header>
+
+      <ContinueWorking
+        projects={recentProjects}
+        onOpen={onOpenRecentProject}
+        onRename={onRenameRecentProject}
+        onDelete={onDeleteRecentProject}
+        onImport={onImportProject}
+      />
+
+      <RecentFiles
+        files={recentFiles}
+        onOpen={onOpenRecentFile}
+        onRemove={onRemoveRecentFile}
+        onClear={onClearRecentFiles}
+        toolNames={toolNames}
+      />
 
       {(recentTools.length > 0 || favoriteTools.length > 0) && (
         <div className="home__quick-row">

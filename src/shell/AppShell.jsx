@@ -3,7 +3,9 @@ import HomePage from './HomePage';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import SettingsPanel from './SettingsPanel';
+import SessionRecoveryPrompt from './SessionRecoveryPrompt';
 import { useTabManager } from './useTabManager';
+import { useWorkspaceSession } from './useWorkspaceSession';
 import { useGlobalTheme } from '../shared/useGlobalTheme';
 import { useToolPreferences } from './useToolPreferences';
 import { TOOLS } from './toolRegistry';
@@ -26,6 +28,7 @@ export default function AppShell() {
     [toolPrefs.recordRecent]
   );
 
+  const tabManager = useTabManager({ onToolOpened: handleToolOpened });
   const {
     tabs,
     tabLabels,
@@ -35,7 +38,9 @@ export default function AppShell() {
     selectTab,
     closeTab,
     goHome,
-  } = useTabManager({ onToolOpened: handleToolOpened });
+  } = tabManager;
+
+  const session = useWorkspaceSession({ tabManager, theme, setTheme, openTool });
 
   const activeToolId = useMemo(() => {
     if (view !== 'tool' || !activeTabId) return null;
@@ -71,7 +76,11 @@ export default function AppShell() {
         activeToolId={activeToolId}
         onGoHome={goHome}
         onOpenTool={openTool}
-        onOpenSettings={openSettings}
+        recentProjects={session.recentProjects}
+        recentFiles={session.recentFiles}
+        onOpenRecentProject={session.openRecentProject}
+        onOpenRecentFile={session.openRecentFile}
+        onImportProject={session.importProject}
       />
 
       <div className="shell-main">
@@ -91,9 +100,21 @@ export default function AppShell() {
           onToggleStrain={toggleStrain}
           view={view}
           activeToolId={activeToolId}
+          onSaveProject={session.saveNamedProject}
+          onExportProject={session.exportProject}
+          onImportProject={session.importProject}
+          onOpenSettings={openSettings}
+          lastSavedAt={session.lastSavedAt}
         />
 
         <div className={`shell-content${view === 'home' ? ' shell-content--home' : ' shell-content--tool'}`}>
+          {session.recoveryProject && (
+            <SessionRecoveryPrompt
+              project={session.recoveryProject}
+              onRestore={session.applyRecovery}
+              onDismiss={session.dismissRecovery}
+            />
+          )}
           {view === 'home' && (
             <HomePage
               onOpenTool={openTool}
@@ -101,6 +122,15 @@ export default function AppShell() {
               recent={toolPrefs.recent}
               onToggleFavorite={toolPrefs.toggleFavorite}
               isFavorite={toolPrefs.isFavorite}
+              recentProjects={session.recentProjects}
+              onOpenRecentProject={session.openRecentProject}
+              onRenameRecentProject={session.renameRecent}
+              onDeleteRecentProject={session.deleteRecent}
+              onImportProject={session.importProject}
+              recentFiles={session.recentFiles}
+              onOpenRecentFile={session.openRecentFile}
+              onRemoveRecentFile={session.removeRecentFileEntry}
+              onClearRecentFiles={session.clearAllRecentFiles}
             />
           )}
 
@@ -119,7 +149,11 @@ export default function AppShell() {
               style={{ display: isVisible ? 'flex' : 'none' }}
             >
                 <ToolOnboardingShell toolId={tab.toolId} isActive={isVisible}>
-                  <ToolComponent instanceId={tab.id} isActive={isVisible} />
+                  <ToolComponent
+                    instanceId={tab.id}
+                    isActive={isVisible}
+                    initialState={tab.initialState ?? null}
+                  />
                 </ToolOnboardingShell>
               </div>
             );

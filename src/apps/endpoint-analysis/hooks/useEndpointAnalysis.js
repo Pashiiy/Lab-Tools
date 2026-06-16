@@ -1,12 +1,13 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { classifyColony, REPAIR_CATEGORIES, REPAIR_PRODUCTS } from '../constants/categories';
 import {
   buildSessionObject,
-  getAutosaveKey,
   normalizeGels,
   validateSession,
 } from '../utils/session';
 import { loadImageUniversal } from '../../../shared/image/imageLoader';
+import { trackRecentFile } from '../../../shared/persistence/trackRecentFile.js';
+import { useOpenFileListener } from '../../../shared/persistence/useOpenFileListener.js';
 
 export const DEFAULT_GEL_ADJUSTMENTS = {
   brightness: 100,
@@ -54,15 +55,12 @@ function resizeColonies(colonies, newCount) {
   return [...colonies, ...additional];
 }
 
-export function useEndpointAnalysis(instanceId) {
-  const autosaveKey = getAutosaveKey(instanceId);
+export function useEndpointAnalysis(instanceId, initialState = null) {
   const [strainName, setStrainName] = useState('');
   const [colonyCount, setColonyCount] = useState(30);
   const [gels, setGels] = useState(createInitialGels);
   const [colonies, setColonies] = useState(() => createColonies(30));
   const [activeTab, setActiveTab] = useState('score-gels');
-  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
-  const [pendingRestore, setPendingRestore] = useState(null);
 
   const getSessionSnapshot = useCallback(
     () =>
@@ -86,45 +84,18 @@ export function useEndpointAnalysis(instanceId) {
       setColonies(resizeColonies(session.colonies ?? [], count));
       setGels(normalizeGels(session.gels));
       setActiveTab(session.activeTab === 'overview' ? 'overview' : 'score-gels');
-      localStorage.removeItem(autosaveKey);
       return true;
     },
-    [autosaveKey]
+    []
   );
 
-  const restoreAutosave = useCallback(() => {
-    if (pendingRestore) {
-      applySession(pendingRestore);
-      setShowRestorePrompt(false);
-      setPendingRestore(null);
-    }
-  }, [pendingRestore, applySession]);
-
-  const discardAutosave = useCallback(() => {
-    localStorage.removeItem(autosaveKey);
-    setShowRestorePrompt(false);
-    setPendingRestore(null);
-  }, [autosaveKey]);
-
+  // Hydrate from a shell-restored `.labtools` project (once on mount).
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    const saved = localStorage.getItem(autosaveKey);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (validateSession(parsed)) {
-        setPendingRestore(parsed);
-        setShowRestorePrompt(true);
-      }
-    } catch {
-      localStorage.removeItem(autosaveKey);
-    }
-  }, [autosaveKey]);
-
-  useEffect(() => {
-    const snapshot = getSessionSnapshot();
-    if (!validateSession(snapshot)) return;
-    localStorage.setItem(autosaveKey, JSON.stringify(snapshot));
-  }, [autosaveKey, getSessionSnapshot]);
+    if (hydratedRef.current || !initialState) return;
+    hydratedRef.current = true;
+    applySession(initialState);
+  }, [initialState, applySession]);
 
   const handleColonyCountChange = useCallback((count) => {
     const parsed = Math.max(1, Math.min(999, parseInt(count, 10) || 1));
@@ -160,6 +131,7 @@ export function useEndpointAnalysis(instanceId) {
           displayHeight: result.displayHeight,
         },
       }));
+      trackRecentFile(file, 'endpoint-analysis').catch(() => {});
     } catch (err) {
       setGels((prev) => ({
         ...prev,
@@ -383,9 +355,6 @@ export function useEndpointAnalysis(instanceId) {
     categoryBreakdown,
     activeTab,
     setActiveTab,
-    showRestorePrompt,
-    pendingRestore,
-    restoreAutosave,
-    discardAutosave,
+    getSnapshot: getSessionSnapshot,
   };
 }

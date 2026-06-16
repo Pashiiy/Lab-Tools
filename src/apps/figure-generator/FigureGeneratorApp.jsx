@@ -4,12 +4,17 @@ import DataPreview from './components/DataPreview';
 import FigureConfig from './components/FigureConfig';
 import FigurePreview from './components/FigurePreview';
 import { exportPNG, exportSVG, exportPDF } from './utils/exportFigure';
+import { useToolSnapshot } from '../../shared/persistence/useToolSnapshot';
+import ToolHeader from '../../shared/ui/ToolHeader';
+import ToolActionBar from '../../shared/ui/ToolActionBar';
 import './figure-generator.css';
 
-export default function FigureGeneratorApp() {
-  const fig = useFigureData();
+export default function FigureGeneratorApp({ instanceId, initialState = null }) {
+  const fig = useFigureData(initialState);
   const chartRef = useRef(null);
   const [exportError, setExportError] = useState('');
+
+  useToolSnapshot(instanceId, 'figure-generator', fig.getSnapshot);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -39,21 +44,18 @@ export default function FigureGeneratorApp() {
 
   return (
     <div className="figure-generator app">
-      <header className="fg-header">
-        <div>
-          <h1 className="fg-header__title">Figure Generator</h1>
-          <p className="fg-header__sub">
-            Publication-quality charts from CSV or Excel
-          </p>
-        </div>
-        {fig.hasData && (
-          <div className="fg-export-bar" data-tour="fg-export">
-            <button type="button" className="lt-btn" onClick={() => doExport('png')}>PNG</button>
-            <button type="button" className="lt-btn" onClick={() => doExport('svg')}>SVG</button>
-            <button type="button" className="lt-btn lt-btn--primary" onClick={() => doExport('pdf')}>PDF</button>
-          </div>
-        )}
-      </header>
+      <ToolHeader
+        title="Figure Generator"
+        subtitle="Publication-quality charts from CSV or Excel"
+      />
+
+      {fig.hasData && (
+        <ToolActionBar hint={fig.fileName} data-tour="fg-export">
+          <button type="button" className="lt-btn" onClick={() => doExport('png')}>PNG</button>
+          <button type="button" className="lt-btn" onClick={() => doExport('svg')}>SVG</button>
+          <button type="button" className="lt-btn lt-btn--primary" onClick={() => doExport('pdf')}>PDF</button>
+        </ToolActionBar>
+      )}
 
       {!fig.hasData ? (
         <div

@@ -60,7 +60,30 @@
   background: var(--bg);
 }
 
-/* Header */
+.ea-header-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ea-header-field__label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ea-header-field__input {
+  width: 120px;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+.ea-header-field__input--num {
+  width: 56px;
+  font-family: 'DM Mono', ui-monospace, monospace;
+}
+
+/* Header (legacy) */
 .endpoint-analysis .header {
   display: flex;
   align-items: center;

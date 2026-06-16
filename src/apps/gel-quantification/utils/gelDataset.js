@@ -40,3 +40,11 @@ export function createGelEntry(raw, overrides = {}) {
 export function updateGelInList(gels, gelId, patch) {
   return gels.map((g) => (g.id === gelId ? { ...g, ...patch } : g));
 }
+
+/** Keep the id counter ahead of any restored `gel-N` ids to avoid collisions. */
+export function bumpGelIdPast(ids = []) {
+  for (const id of ids) {
+    const match = /gel-(\d+)/.exec(id ?? '');
+    if (match) nextGelId = Math.max(nextGelId, parseInt(match[1], 10) + 1);
+  }
+}

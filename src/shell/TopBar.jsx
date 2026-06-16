@@ -23,11 +23,25 @@ export default function TopBar({
   onToggleStrain,
   view,
   activeToolId,
+  onSaveProject,
+  onExportProject,
+  onImportProject,
+  onOpenSettings,
+  lastSavedAt,
 }) {
   const { openHelp } = useToolHelp();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const isHome = view === 'home';
+
+  const savedLabel = useMemo(() => {
+    if (!lastSavedAt) return null;
+    const secs = Math.round((Date.now() - lastSavedAt) / 1000);
+    if (secs < 10) return 'Saved just now';
+    if (secs < 60) return `Saved ${secs}s ago`;
+    const mins = Math.round(secs / 60);
+    return `Saved ${mins}m ago`;
+  }, [lastSavedAt]);
 
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -118,6 +132,55 @@ export default function TopBar({
       </div>
 
       <div className="shell-topbar__right">
+        {view === 'tool' && (
+          <div className="shell-topbar__project">
+            {savedLabel && (
+              <span className="shell-topbar__autosave" title="Workspace autosaved locally">
+                {savedLabel}
+              </span>
+            )}
+            <button
+              type="button"
+              className="shell-topbar__project-btn"
+              onClick={() => {
+                const name = window.prompt('Save project as', 'My Project');
+                if (name && name.trim()) onSaveProject?.(name.trim());
+              }}
+              title="Save the current workspace as a named project"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="shell-topbar__project-btn"
+              onClick={() => onImportProject?.()}
+              title="Import a .labtools project file"
+            >
+              Import
+            </button>
+            <button
+              type="button"
+              className="shell-topbar__project-btn shell-topbar__project-btn--primary"
+              onClick={() => onExportProject?.()}
+              title="Export the workspace to a .labtools file"
+            >
+              Export
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          className="shell-nav__utility"
+          onClick={onOpenSettings}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+          <span className="shell-nav__utility-label">Settings</span>
+        </button>
         {view === 'tool' && activeToolId && hasHelpContent(activeToolId) && (
           <ToolHelpButton className="shell-topbar__help" onClick={openHelp} />
         )}

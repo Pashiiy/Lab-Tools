@@ -66,7 +66,81 @@ html[data-theme='light'] .colony-counter {
   overflow: hidden;
 }
 
-/* Header */
+/* Session name inline (ToolHeader) */
+.cc-session-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cc-session-name__divider {
+  color: var(--border);
+  font-weight: 300;
+}
+
+.cc-session-name__btn {
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--lt-radius-sm);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-session-name__btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.cc-session-name__input {
+  width: 140px;
+  font-size: 0.6875rem;
+}
+
+.cc-session-name__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--status-saved);
+}
+
+.cc-session-name__dot--dirty {
+  background: var(--status-dirty);
+}
+
+.cc-session-name__status {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--status-saved);
+  white-space: nowrap;
+}
+
+.cc-session-name__status--dirty {
+  color: var(--text-muted);
+}
+
+.cc-hidden-input {
+  display: none;
+}
+
+@keyframes cc-save-pulse-keyframes {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--lt-accent) 40%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--lt-accent) 25%, transparent); }
+}
+
+.cc-save-pulse {
+  animation: cc-save-pulse-keyframes 1.2s ease-in-out 3;
+}
+
+/* Header (legacy — kept for reference during migration) */
 .colony-counter .header {
   display: flex;
   align-items: center;

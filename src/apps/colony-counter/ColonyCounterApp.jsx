@@ -1,13 +1,15 @@
 import { useColonyCounter } from './hooks/useColonyCounter';
-import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Workspace from './components/Workspace';
-import RestoreBanner from './components/RestoreBanner';
 import IOSInstallBanner from './components/IOSInstallBanner';
+import SessionNameEditor from './components/SessionNameEditor';
+import { useToolSnapshot } from '../../shared/persistence/useToolSnapshot';
+import ToolHeader from '../../shared/ui/ToolHeader';
+import ToolActionBar from '../../shared/ui/ToolActionBar';
 import './colony-counter.css';
 import '../../shared/image/image-import.css';
 
-export default function ColonyCounterApp({ instanceId, isActive }) {
+export default function ColonyCounterApp({ instanceId, isActive, initialState = null }) {
   const {
     dots,
     categories,
@@ -48,27 +50,64 @@ export default function ColonyCounterApp({ instanceId, isActive }) {
     sessionName,
     isDirty,
     showSavedFlash,
-    showRestorePrompt,
-    pendingRestore,
-    restoreAutosave,
-    discardAutosave,
     saveSession,
     openSession,
     handleSessionFileSelected,
     sessionFileInputRef,
     remindSavePulse,
     handleSessionNameChange,
-  } = useColonyCounter(instanceId, isActive);
+    getSnapshot,
+  } = useColonyCounter(instanceId, isActive, initialState);
+
+  useToolSnapshot(instanceId, 'colony-counter', () => (image ? getSnapshot() : undefined));
 
   return (
     <div className="colony-counter app">
       <IOSInstallBanner />
-      <Header
-        sessionName={sessionName}
-        onSessionNameChange={handleSessionNameChange}
-        isDirty={isDirty}
-        showSavedFlash={showSavedFlash}
+      <ToolHeader title="Colony Counter">
+        <SessionNameEditor
+          sessionName={sessionName}
+          onSessionNameChange={handleSessionNameChange}
+          isDirty={isDirty}
+          showSavedFlash={showSavedFlash}
+        />
+      </ToolHeader>
+
+      {image && (
+        <ToolActionBar hint={`${colonyCount} colonies`}>
+          <button
+            type="button"
+            className={`lt-btn lt-btn--primary${remindSavePulse ? ' cc-save-pulse' : ''}`}
+            onClick={saveSession}
+            title="Ctrl+S"
+          >
+            Save Session
+          </button>
+          <button type="button" className="lt-btn" onClick={openSession} title="Ctrl+O">
+            Open Session
+          </button>
+          <button
+            type="button"
+            className="lt-btn"
+            onClick={exportImage}
+            data-tour="cc-export"
+          >
+            Save Image
+          </button>
+          <button type="button" className="lt-btn lt-btn--danger" onClick={clearAll}>
+            Clear All
+          </button>
+        </ToolActionBar>
+      )}
+
+      <input
+        ref={sessionFileInputRef}
+        type="file"
+        accept=".labtools,.colonycount"
+        className="cc-hidden-input"
+        onChange={handleSessionFileSelected}
       />
+
       <div className="app__body app-layout">
         <Sidebar
           colonyCount={colonyCount}
@@ -97,23 +136,9 @@ export default function ColonyCounterApp({ instanceId, isActive }) {
           canRedo={canRedo}
           onUndo={undo}
           onRedo={redo}
-          onSaveSession={saveSession}
-          onOpenSession={openSession}
-          onExport={exportImage}
-          onClearAll={clearAll}
           hasImage={!!image}
-          remindSavePulse={remindSavePulse}
-          sessionFileInputRef={sessionFileInputRef}
-          onSessionFileSelected={handleSessionFileSelected}
         />
         <div className="workspace-area">
-          {showRestorePrompt && pendingRestore && (
-            <RestoreBanner
-              savedAt={pendingRestore.savedAt}
-              onRestore={restoreAutosave}
-              onDiscard={discardAutosave}
-            />
-          )}
           <Workspace
             image={image}
             loadingImage={loadingImage}

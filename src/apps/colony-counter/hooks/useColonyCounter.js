@@ -5,11 +5,8 @@ import {
   getCategoryCounts,
 } from '../utils/categories';
 import {
-  getAutosaveKey,
   buildSessionObject,
-  formatTimeAgo,
   syncDotIdCounter,
-  triggerJsonDownload,
   validateSession,
 } from '../utils/session';
 import {
@@ -17,6 +14,12 @@ import {
   clearInstanceDirty,
 } from '../../../shared/dirtyStateRegistry';
 import { loadImageUniversal } from '../../../shared/image/imageLoader';
+import { trackRecentFile } from '../../../shared/persistence/trackRecentFile.js';
+import { useOpenFileListener } from '../../../shared/persistence/useOpenFileListener.js';
+import { createEmptyProject, isLabtoolsProject } from '../../../shared/persistence/labtoolsSchema.js';
+import { downloadText, pickTextFile } from '../../../shared/persistence/fileDialog.js';
+import { importProjectFromText } from '../../../shared/persistence/projectStore.js';
+import { APP_VERSION } from '../../../shared/appVersion';
 
 let nextId = 1;
 
@@ -29,8 +32,7 @@ function hexToRgba(hex, alpha) {
 
 export { hexToRgba };
 
-export function useColonyCounter(instanceId, isActive = true) {
-  const autosaveKey = getAutosaveKey(instanceId);
+export function useColonyCounter(instanceId, isActive = true, initialState = null) {
   const [dots, setDots] = useState([]);
   const [history, setHistory] = useState([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -51,8 +53,6 @@ export function useColonyCounter(instanceId, isActive = true) {
   const [lastSaved, setLastSaved] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [showSavedFlash, setShowSavedFlash] = useState(false);
-  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
-  const [pendingRestore, setPendingRestore] = useState(null);
   const [remindSavePulse, setRemindSavePulse] = useState(false);
 
   const skipDirtyRef = useRef(false);
@@ -189,14 +189,13 @@ export function useColonyCounter(instanceId, isActive = true) {
     setIsDirty(false);
     dirtySinceRef.current = null;
     setRemindSavePulse(false);
-    localStorage.removeItem(autosaveKey);
 
     requestAnimationFrame(() => {
       skipDirtyRef.current = false;
     });
 
     return true;
-  }, [autosaveKey]);
+  }, []);
 
   const pushHistory = useCallback(
     (newDots) => {
@@ -391,6 +390,7 @@ export function useColonyCounter(instanceId, isActive = true) {
       requestAnimationFrame(() => {
         skipDirtyRef.current = false;
       });
+      trackRecentFile(file, 'colony-counter').catch(() => {});
     } catch (err) {
       fullResCanvasRef.current = null;
       setUploadError(err.message || 'Failed to load image');
@@ -398,6 +398,8 @@ export function useColonyCounter(instanceId, isActive = true) {
       setLoadingImage(false);
     }
   }, []);
+
+  useOpenFileListener('colony-counter', loadImage);
 
   const dismissUploadError = useCallback(() => {
     setUploadError(null);
@@ -469,38 +471,51 @@ export function useColonyCounter(instanceId, isActive = true) {
     dirtySinceRef.current = null;
     setRemindSavePulse(false);
     setShowSavedFlash(true);
-    localStorage.removeItem(autosaveKey);
     setTimeout(() => setShowSavedFlash(false), 3000);
-  }, [autosaveKey]);
+  }, []);
 
-  const saveSession = useCallback(async () => {
-    if (!image) return;
-
+  // Build a colony-counter session snapshot, embedding the full-res image.
+  const buildColonySnapshot = useCallback(() => {
     const session = getSessionSnapshot();
     if (fullResCanvasRef.current) {
       session.originalSrc = fullResCanvasRef.current.toDataURL('image/png');
     }
-    const jsonContent = JSON.stringify(session, null, 2);
-    const defaultName = sessionName || 'colony-session';
+    return session;
+  }, [getSessionSnapshot]);
 
-    if (window.electronAPI?.saveSession) {
-      const result = await window.electronAPI.saveSession(defaultName, jsonContent);
-      if (result?.success) {
-        completeSave();
-      }
-    } else {
-      triggerJsonDownload(jsonContent, `${defaultName}.colonycount`);
-      completeSave();
-    }
-  }, [image, getSessionSnapshot, sessionName, completeSave]);
+  // Save the current colony work as a unified `.labtools` project (single tab).
+  const saveSession = useCallback(async () => {
+    if (!image) return;
+    const project = createEmptyProject({
+      name: sessionName || 'colony-session',
+      appVersion: APP_VERSION,
+    });
+    const tabId = 'tab-1';
+    project.workspace.tabs = [{ id: tabId, toolId: 'colony-counter', label: 'Colony Counter (1)' }];
+    project.workspace.activeTabId = tabId;
+    project.tools[tabId] = {
+      toolId: 'colony-counter',
+      stateVersion: 1,
+      state: buildColonySnapshot(),
+    };
+    const ok = await downloadText(JSON.stringify(project, null, 2), `${sessionName || 'colony-session'}.labtools`);
+    if (ok) completeSave();
+  }, [image, sessionName, buildColonySnapshot, completeSave]);
 
-  const loadSessionFromContent = useCallback(
+  // Extract a colony session from any `.labtools` (or legacy `.colonycount`).
+  const applyProjectOrSession = useCallback(
     (content) => {
       try {
-        const session = JSON.parse(content);
-        return applySession(session);
+        const project = importProjectFromText(content, { appVersion: APP_VERSION });
+        if (isLabtoolsProject(project)) {
+          const entry = Object.values(project.tools).find((t) => t.toolId === 'colony-counter');
+          if (entry?.state) return applySession(entry.state);
+          alert('This project has no Colony Counter data.');
+          return false;
+        }
+        return applySession(project);
       } catch {
-        alert('Invalid session file.');
+        alert('Invalid project file.');
         return false;
       }
     },
@@ -508,15 +523,9 @@ export function useColonyCounter(instanceId, isActive = true) {
   );
 
   const openSession = useCallback(async () => {
-    if (window.electronAPI?.loadSession) {
-      const result = await window.electronAPI.loadSession();
-      if (result?.success && result.content) {
-        loadSessionFromContent(result.content);
-      }
-    } else {
-      sessionFileInputRef.current?.click();
-    }
-  }, [loadSessionFromContent]);
+    const content = await pickTextFile(['.labtools']);
+    if (content) applyProjectOrSession(content);
+  }, [applyProjectOrSession]);
 
   const handleSessionFileSelected = useCallback(
     (e) => {
@@ -524,61 +533,21 @@ export function useColonyCounter(instanceId, isActive = true) {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
-        loadSessionFromContent(ev.target.result);
+        applyProjectOrSession(ev.target.result);
       };
       reader.readAsText(file);
       e.target.value = '';
     },
-    [loadSessionFromContent]
+    [applyProjectOrSession]
   );
 
-  const restoreAutosave = useCallback(() => {
-    if (pendingRestore) {
-      applySession(pendingRestore);
-      setShowRestorePrompt(false);
-      setPendingRestore(null);
-    }
-  }, [pendingRestore, applySession]);
-
-  const discardAutosave = useCallback(() => {
-    localStorage.removeItem(autosaveKey);
-    setShowRestorePrompt(false);
-    setPendingRestore(null);
-  }, [autosaveKey]);
-
+  // Hydrate from a shell-restored `.labtools` project (runs once on mount).
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    const saved = localStorage.getItem(autosaveKey);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (validateSession(parsed)) {
-        setPendingRestore(parsed);
-        setShowRestorePrompt(true);
-      }
-    } catch {
-      localStorage.removeItem(autosaveKey);
-    }
-  }, [autosaveKey]);
-
-  useEffect(() => {
-    if (!image?.src) return;
-    const snapshot = getSessionSnapshot();
-    localStorage.setItem(autosaveKey, JSON.stringify(snapshot));
-  }, [
-    autosaveKey,
-    dots,
-    categories,
-    activeCategory,
-    dotRadius,
-    opacity,
-    dilutionMode,
-    dilutionExponent,
-    customDilution,
-    volumeMl,
-    sessionName,
-    image?.src,
-    getSessionSnapshot,
-  ]);
+    if (hydratedRef.current || !initialState) return;
+    hydratedRef.current = true;
+    applySession(initialState);
+  }, [initialState, applySession]);
 
   useEffect(() => {
     if (!isDirty || !dirtySinceRef.current) {
@@ -676,15 +645,12 @@ export function useColonyCounter(instanceId, isActive = true) {
     lastSaved,
     isDirty,
     showSavedFlash,
-    showRestorePrompt,
-    pendingRestore,
-    restoreAutosave,
-    discardAutosave,
     saveSession,
     openSession,
     handleSessionFileSelected,
     sessionFileInputRef,
     remindSavePulse,
     handleSessionNameChange,
+    getSnapshot: buildColonySnapshot,
   };
 }

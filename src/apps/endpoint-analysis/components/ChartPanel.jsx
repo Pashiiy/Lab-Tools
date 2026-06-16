@@ -168,7 +168,6 @@ export default function ChartPanel({
   stackedBarData,
   categoryCounts,
   strainName,
-  onExportExcel,
 }) {
   const panelRef = useRef(null);
   const [chartType, setChartType] = useState('pie');
@@ -354,15 +353,8 @@ export default function ChartPanel({
       </section>
 
       <div className="chart-panel__footer">
-        <button type="button" className="chart-panel__export" onClick={exportPng}>
-          💾 Export Chart PNG
-        </button>
-        <button
-          type="button"
-          className="chart-panel__export"
-          onClick={onExportExcel}
-        >
-          📋 Export Excel
+        <button type="button" className="chart-panel__export lt-btn" onClick={exportPng}>
+          Export Chart PNG
         </button>
       </div>
     </div>

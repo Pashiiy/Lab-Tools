@@ -8,10 +8,23 @@ import DataTable from './components/DataTable';
 import GelSelector from './components/GelSelector';
 import FijiExcelValidator from './components/FijiExcelValidator';
 import ParityAudit from './components/ParityAudit';
+import { useToolSnapshot } from '../../shared/persistence/useToolSnapshot';
+import ToolHeader from '../../shared/ui/ToolHeader';
+import LtTabs from '../../shared/ui/LtTabs';
+import ToolActionBar from '../../shared/ui/ToolActionBar';
 import './gel-quantification.css';
 
-export default function GelQuantificationApp() {
-  const gq = useGelQuantification();
+const GEL_TABS = [
+  { id: 'image', label: 'Image View' },
+  { id: 'data', label: 'Data Table' },
+  { id: 'validator', label: 'Fiji/Excel Validator' },
+  { id: 'parity', label: 'Parity Audit' },
+];
+
+export default function GelQuantificationApp({ instanceId, initialState = null }) {
+  const gq = useGelQuantification(initialState);
+
+  useToolSnapshot(instanceId, 'gel-quantification', gq.getSnapshot);
 
   const completePairCount = gq.pairs.filter((p) => p.complete).length;
 
@@ -52,10 +65,10 @@ export default function GelQuantificationApp() {
 
   return (
     <div className="gel-quantification app">
-      <header className="gq-header">
-        <h1 className="gq-header__title">Gel Quantification</h1>
-        <span className="gq-header__badge">FIJI_COMPATIBILITY_MODE</span>
-      </header>
+      <ToolHeader
+        title="Gel Quantification"
+        badge="Fiji mode"
+      />
 
       <div className="gq-layout">
         <Sidebar
@@ -76,41 +89,30 @@ export default function GelQuantificationApp() {
           onTemplateChange={gq.setTemplate}
           onResetTemplateDefaults={gq.resetTemplateDefaults}
           onSessionFieldsChange={gq.updateSessionFields}
-          onExportExcel={gq.exportExcel}
-          onExportCsv={gq.exportCsv}
         />
 
         <div className="gq-main">
-          <nav className="gq-tabs" data-tour="gq-tabs">
-            <button
-              type="button"
-              className={`gq-tabs__btn${gq.activeTab === 'image' ? ' gq-tabs__btn--active' : ''}`}
-              onClick={() => gq.setActiveTab('image')}
-            >
-              Image View
-            </button>
-            <button
-              type="button"
-              className={`gq-tabs__btn${gq.activeTab === 'data' ? ' gq-tabs__btn--active' : ''}`}
-              onClick={() => gq.setActiveTab('data')}
-            >
-              Data Table
-            </button>
-            <button
-              type="button"
-              className={`gq-tabs__btn${gq.activeTab === 'validator' ? ' gq-tabs__btn--active' : ''}`}
-              onClick={() => gq.setActiveTab('validator')}
-            >
-              Fiji/Excel Validator
-            </button>
-            <button
-              type="button"
-              className={`gq-tabs__btn${gq.activeTab === 'parity' ? ' gq-tabs__btn--active' : ''}`}
-              onClick={() => gq.setActiveTab('parity')}
-            >
-              Parity Audit
-            </button>
-          </nav>
+          <LtTabs
+            tabs={GEL_TABS}
+            activeId={gq.activeTab}
+            onChange={gq.setActiveTab}
+            ariaLabel="Gel quantification views"
+          />
+
+          {gq.totalCompletePairs > 0 && (
+            <ToolActionBar hint={`${gq.totalCompletePairs} complete pair${gq.totalCompletePairs !== 1 ? 's' : ''}`}>
+              <button
+                type="button"
+                className="lt-btn lt-btn--primary"
+                onClick={gq.exportExcel}
+              >
+                Export Excel
+              </button>
+              <button type="button" className="lt-btn" onClick={gq.exportCsv}>
+                Export CSV
+              </button>
+            </ToolActionBar>
+          )}
 
           <div className="gq-workspace">
             {gq.activeTab === 'image' ? (

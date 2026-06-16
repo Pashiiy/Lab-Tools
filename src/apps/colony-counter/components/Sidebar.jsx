@@ -28,27 +28,12 @@ export default function Sidebar({
   canRedo,
   onUndo,
   onRedo,
-  onSaveSession,
-  onOpenSession,
-  onExport,
-  onClearAll,
   hasImage,
-  remindSavePulse,
-  sessionFileInputRef,
-  onSessionFileSelected,
 }) {
   const disabled = !hasImage;
 
   return (
     <aside className="sidebar">
-      <input
-        ref={sessionFileInputRef}
-        type="file"
-        accept=".colonycount,.json"
-        className="session-file-input"
-        onChange={onSessionFileSelected}
-      />
-
       <section className="sidebar__section count-panel">
         <div className="count-panel__total">
           <span className="count-panel__number">{colonyCount}</span>
@@ -144,36 +129,6 @@ export default function Sidebar({
           </button>
         </div>
         <p className="sidebar__hint">Ctrl+Z / Ctrl+Y</p>
-      </section>
-
-      <section className="sidebar__section sidebar__actions">
-        <button
-          className={`btn btn--primary${remindSavePulse ? ' btn--pulse-reminder' : ''}`}
-          onClick={onSaveSession}
-          disabled={disabled}
-        >
-          Save Session
-        </button>
-        <p className="sidebar__hint">Ctrl+S</p>
-        <button className="btn" onClick={onOpenSession}>
-          Open Session
-        </button>
-        <p className="sidebar__hint">Ctrl+O</p>
-        <button
-          className="btn"
-          onClick={onExport}
-          disabled={disabled}
-          data-tour="cc-export"
-        >
-          Save Image
-        </button>
-        <button
-          className="btn"
-          onClick={onClearAll}
-          disabled={disabled}
-        >
-          Clear All
-        </button>
       </section>
     </aside>
   );

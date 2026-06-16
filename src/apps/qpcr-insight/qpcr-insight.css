@@ -15,11 +15,11 @@
   --qi-text-muted: var(--lt-text-muted);
   --qi-text-faint: var(--lt-text-faint);
   --qi-input-bg: var(--lt-input-bg);
-  --qi-sidebar-width: 220px;
   --qi-font-mono: 'DM Mono', monospace;
   --qi-font-body: 'Inter', system-ui, sans-serif;
 
   display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -35,19 +35,11 @@
   justify-content: center;
 }
 
-.qpcr-insight__main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
 .qpcr-insight__content {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px 20px;
+  padding: 12px 16px;
 }
 
 .qpcr-insight__hidden-input {

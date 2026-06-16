@@ -1,14 +1,25 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { parseDataFile } from '../utils/parseDataFile';
 import { DEFAULT_CONFIG } from '../utils/chartTypes';
 
-export function useFigureData() {
+export function useFigureData(initialState = null) {
   const [loading, setLoading] = useState(false);
   const [parseError, setParseError] = useState(null);
   const [fileName, setFileName] = useState('');
   const [headers, setHeaders] = useState([]);
   const [rows, setRows] = useState([]);
   const [config, setConfig] = useState({ ...DEFAULT_CONFIG });
+
+  // Hydrate from a shell-restored `.labtools` project (once on mount).
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current || !initialState?.rows?.length) return;
+    hydratedRef.current = true;
+    setHeaders(initialState.headers ?? []);
+    setRows(initialState.rows ?? []);
+    setFileName(initialState.fileName ?? '');
+    setConfig({ ...DEFAULT_CONFIG, ...(initialState.config ?? {}) });
+  }, [initialState]);
 
   const loadFile = useCallback(async (file) => {
     if (!file) return;
@@ -49,6 +60,11 @@ export function useFigureData() {
 
   const hasData = rows.length > 0;
 
+  const getSnapshot = useCallback(
+    () => (rows.length > 0 ? { fileName, headers, rows, config } : undefined),
+    [fileName, headers, rows, config]
+  );
+
   return {
     loading,
     parseError,
@@ -60,5 +76,6 @@ export function useFigureData() {
     updateConfig,
     loadFile,
     hasData,
+    getSnapshot,
   };
 }
