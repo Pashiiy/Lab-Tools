@@ -2,7 +2,6 @@ import EndpointAnalysisApp from '../apps/endpoint-analysis/EndpointAnalysisApp';
 import ColonyCounterApp from '../apps/colony-counter/ColonyCounterApp';
 import GelQuantificationApp from '../apps/gel-quantification/GelQuantificationApp';
 import QPCRInsightApp from '../apps/qpcr-insight/QPCRInsightApp';
-import FigureGeneratorApp from '../apps/figure-generator/FigureGeneratorApp';
 
 export const TOOLS = {
   'endpoint-analysis': {
@@ -28,12 +27,6 @@ export const TOOLS = {
     name: 'qPCR Analysis',
     description: 'Parse QuantStudio .eds or .xlsx files — plate setup, run info, amplification curves, and ΔΔCt analysis.',
     component: QPCRInsightApp,
-  },
-  'figure-generator': {
-    id: 'figure-generator',
-    name: 'Figure Generator',
-    description: 'Create publication-quality figures from CSV or Excel datasets with scientific formatting.',
-    component: FigureGeneratorApp,
   },
 };
 
