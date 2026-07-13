@@ -33,7 +33,7 @@ const AUTOSAVE_INTERVAL_MS = 30000;
 /**
  * Orchestrates persistent sessions for the whole workspace:
  * load on startup → auto-restore or crash recovery → autosave continuously →
- * export/import unified `.labtools` projects → manage recent files & projects.
+ * export/import unified `.benchy` projects → manage recent files & projects.
  */
 export function useWorkspaceSession({ tabManager, theme, setTheme, openTool }) {
   const { tabs, activeTabId, tabLabels, restoreWorkspace, view } = tabManager;
@@ -222,7 +222,7 @@ export function useWorkspaceSession({ tabManager, theme, setTheme, openTool }) {
   }, []);
 
   const importProject = useCallback(async () => {
-    const text = await pickTextFile([`.${LABTOOLS_EXTENSION}`, '.colonycount', '.json']);
+    const text = await pickTextFile([`.${LABTOOLS_EXTENSION}`, '.labtools', '.colonycount', '.json']);
     if (!text) return;
     const project = importProjectFromText(text, { appVersion: APP_VERSION });
     restoredRef.current = true;

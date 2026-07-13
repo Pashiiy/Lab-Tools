@@ -1,5 +1,5 @@
 /**
- * Lab Tools — Scientific UI Design System
+ * Benchy — Scientific UI Design System
  * UNC-inspired palette · instrument-software density · publication charts
  *
  * All tools inherit via --lt-* tokens. Do not hardcode colors in tool CSS.
@@ -278,6 +278,15 @@ html[data-theme='light'] {
 .lt-btn--danger {
   color: var(--lt-danger);
   border-color: color-mix(in srgb, var(--lt-danger) 40%, var(--lt-border));
+}
+
+.lt-btn--block {
+  width: 100%;
+}
+
+.lt-btn--small {
+  font-size: 0.6875rem;
+  padding: 4px 8px;
 }
 
 /* ── Inputs ── */

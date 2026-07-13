@@ -9,6 +9,7 @@ import GelSelector from './components/GelSelector';
 import FijiExcelValidator from './components/FijiExcelValidator';
 import ParityAudit from './components/ParityAudit';
 import { useToolSnapshot } from '../../shared/persistence/useToolSnapshot';
+import { isEditableTarget } from '../../shared/input/isEditableTarget';
 import ToolHeader from '../../shared/ui/ToolHeader';
 import LtTabs from '../../shared/ui/LtTabs';
 import ToolActionBar from '../../shared/ui/ToolActionBar';
@@ -21,7 +22,7 @@ const GEL_TABS = [
   { id: 'parity', label: 'Parity Audit' },
 ];
 
-export default function GelQuantificationApp({ instanceId, initialState = null }) {
+export default function GelQuantificationApp({ instanceId, isActive = true, initialState = null }) {
   const gq = useGelQuantification(initialState);
 
   useToolSnapshot(instanceId, 'gel-quantification', gq.getSnapshot);
@@ -29,7 +30,10 @@ export default function GelQuantificationApp({ instanceId, initialState = null }
   const completePairCount = gq.pairs.filter((p) => p.complete).length;
 
   useEffect(() => {
+    if (!isActive) return undefined;
+
     const onKeyDown = (e) => {
+      if (isEditableTarget(e.target)) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod) {
         if (e.key === 'z' && !e.shiftKey) {
@@ -54,7 +58,15 @@ export default function GelQuantificationApp({ instanceId, initialState = null }
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [gq]);
+  }, [
+    isActive,
+    gq.activeTab,
+    gq.gels.length,
+    gq.undo,
+    gq.redo,
+    gq.goToPrevGel,
+    gq.goToNextGel,
+  ]);
 
   const handleSelectGelFromTable = (gelId) => {
     if (gelId && gelId !== gq.activeGelId) {
@@ -75,6 +87,7 @@ export default function GelQuantificationApp({ instanceId, initialState = null }
           raw={gq.raw}
           gelCount={gq.gels.length}
           loading={gq.loading}
+          loadingLabel={gq.loadingLabel}
           displayAdjustments={gq.displayAdjustments}
           inverted={gq.inverted}
           roiTemplate={gq.roiTemplate}
@@ -84,6 +97,7 @@ export default function GelQuantificationApp({ instanceId, initialState = null }
           strainName={gq.strainName}
           description={gq.description}
           onAddGel={gq.addGelFromFile}
+          onAddGels={gq.addGelsFromFiles}
           onDisplayAdjustmentsChange={gq.setDisplayAdjustments}
           onInvertedChange={gq.setInverted}
           onTemplateChange={gq.setTemplate}
@@ -99,20 +113,30 @@ export default function GelQuantificationApp({ instanceId, initialState = null }
             ariaLabel="Gel quantification views"
           />
 
-          {gq.totalCompletePairs > 0 && (
-            <ToolActionBar hint={`${gq.totalCompletePairs} complete pair${gq.totalCompletePairs !== 1 ? 's' : ''}`}>
-              <button
-                type="button"
-                className="lt-btn lt-btn--primary"
-                onClick={gq.exportExcel}
-              >
-                Export Excel
-              </button>
-              <button type="button" className="lt-btn" onClick={gq.exportCsv}>
-                Export CSV
-              </button>
-            </ToolActionBar>
-          )}
+          <ToolActionBar
+            hint={
+              gq.totalCompletePairs > 0
+                ? `${gq.totalCompletePairs} complete pair${gq.totalCompletePairs !== 1 ? 's' : ''}`
+                : 'Complete a Target/Control pair to enable export'
+            }
+          >
+            <button
+              type="button"
+              className="lt-btn lt-btn--primary"
+              onClick={gq.exportExcel}
+              disabled={gq.totalCompletePairs === 0}
+            >
+              Export Excel
+            </button>
+            <button
+              type="button"
+              className="lt-btn"
+              onClick={gq.exportCsv}
+              disabled={gq.totalCompletePairs === 0}
+            >
+              Export CSV
+            </button>
+          </ToolActionBar>
 
           <div className="gq-workspace">
             {gq.activeTab === 'image' ? (
@@ -149,6 +173,7 @@ export default function GelQuantificationApp({ instanceId, initialState = null }
                     activeRoiId={gq.activeRoiId}
                     onRoiClick={gq.createRoiAtClick}
                     onSelectRoi={gq.selectRoi}
+                    isActive={isActive}
                   />
                 </div>
                 <RoiManager

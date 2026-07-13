@@ -1,8 +1,9 @@
-export function ImageImportSpinner({ label = 'Loading image...' }) {
+export function ImageImportSpinner({ label = 'Loading image...', detail = null }) {
   return (
     <div className="image-import-state image-import-state--loading">
       <div className="image-import-spinner" aria-hidden />
       <span className="image-import-state__label">{label}</span>
+      {detail && <span className="image-import-state__detail">{detail}</span>}
     </div>
   );
 }

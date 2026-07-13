@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import HomePage from './HomePage';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -14,6 +14,14 @@ import NotepadPanel from '../shared/NotepadPanel';
 import StrainReferencePanel from '../shared/StrainReferencePanel';
 import ToolOnboardingShell from '../help/ToolOnboardingShell';
 import { ToolHelpProvider } from '../help/ToolHelpContext';
+import { isElectronApp } from '../shared/launchMode';
+import { windowTitle } from '../shared/brand';
+import { createAndOpenResearchProject } from '../research/ResearchProjectShell';
+import {
+  deleteResearchProject,
+  importResearchFromText,
+  listRecentResearchProjects,
+} from '../shared/persistence/researchProjectStore';
 import './shell.css';
 
 export default function AppShell() {
@@ -22,6 +30,51 @@ export default function AppShell() {
   const [notepadOpen, setNotepadOpen] = useState(false);
   const [strainOpen, setStrainOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [researchProjects, setResearchProjects] = useState([]);
+  const isElectron = isElectronApp();
+
+  const refreshResearchProjects = useCallback(async () => {
+    try {
+      setResearchProjects(await listRecentResearchProjects());
+    } catch {
+      setResearchProjects([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshResearchProjects();
+  }, [refreshResearchProjects]);
+
+  const handleCreateResearch = useCallback(
+    async (fields) => {
+      await createAndOpenResearchProject(fields);
+      await refreshResearchProjects();
+    },
+    [refreshResearchProjects]
+  );
+
+  const handleOpenResearch = useCallback(async (projectId) => {
+    if (window.electronAPI?.openResearchWindow) {
+      await window.electronAPI.openResearchWindow(projectId);
+    }
+  }, []);
+
+  const handleImportResearch = useCallback(async () => {
+    if (!window.electronAPI?.openProjectFile) return;
+    const result = await window.electronAPI.openProjectFile();
+    if (!result?.success || !result.content) return;
+    const saved = await importResearchFromText(result.content);
+    await refreshResearchProjects();
+    await window.electronAPI.openResearchWindow(saved.metadata.id);
+  }, [refreshResearchProjects]);
+
+  const handleDeleteResearch = useCallback(
+    async (projectId) => {
+      await deleteResearchProject(projectId);
+      await refreshResearchProjects();
+    },
+    [refreshResearchProjects]
+  );
 
   const handleToolOpened = useCallback(
     (toolId) => toolPrefs.recordRecent(toolId),
@@ -46,6 +99,18 @@ export default function AppShell() {
     if (view !== 'tool' || !activeTabId) return null;
     return tabs.find((t) => t.id === activeTabId)?.toolId ?? null;
   }, [view, activeTabId, tabs]);
+
+  useEffect(() => {
+    if (settingsOpen) {
+      document.title = windowTitle('Settings');
+      return;
+    }
+    if (view === 'tool' && activeToolId && TOOLS[activeToolId]) {
+      document.title = windowTitle(TOOLS[activeToolId].name);
+      return;
+    }
+    document.title = windowTitle();
+  }, [view, activeToolId, settingsOpen]);
 
   const toggleNotepad = () => {
     setNotepadOpen((v) => !v);
@@ -131,6 +196,12 @@ export default function AppShell() {
               onOpenRecentFile={session.openRecentFile}
               onRemoveRecentFile={session.removeRecentFileEntry}
               onClearRecentFiles={session.clearAllRecentFiles}
+              isElectron={isElectron}
+              researchProjects={researchProjects}
+              onCreateResearchProject={handleCreateResearch}
+              onOpenResearchProject={handleOpenResearch}
+              onImportResearchProject={handleImportResearch}
+              onDeleteResearchProject={handleDeleteResearch}
             />
           )}
 

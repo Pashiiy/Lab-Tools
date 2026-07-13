@@ -79,7 +79,7 @@ async function main() {
     console.warn('Skipping icon.icns generation (requires macOS iconutil). Run on macOS before mac builds.');
   }
 
-  console.log('Generated Lab Tools icon assets in public/:');
+  console.log('Generated Benchy icon assets in public/:');
   console.log('  logo.svg, logo-light.svg, favicon.svg');
   console.log('  icon.png, icon.icns, icon.ico');
   console.log('  icon-512.png, icon-192.png');

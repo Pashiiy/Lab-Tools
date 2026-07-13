@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TOOL_LIST } from './toolRegistry';
 import { TOOL_CATEGORIES, getManifest, getActiveTools } from './toolManifest';
 import { ToolIcon } from './ToolIcons';
+import { APP_NAME, APP_TAGLINE } from '../shared/brand';
 import './home.css';
+import '../research/research.css';
 
 function ToolCard({ tool, index, isFavorite, onOpen, onToggleFavorite }) {
   return (
@@ -114,18 +116,163 @@ function RecentFiles({ files, onOpen, onRemove, onClear, toolNames }) {
   );
 }
 
+function NewResearchProjectModal({ open, onClose, onCreate }) {
+  const [form, setForm] = useState({
+    name: '',
+    pi: '',
+    researcher: '',
+    description: '',
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: '',
+    location: '',
+    notes: '',
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!open) return null;
+
+  const setField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      setError('Project name is required');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await onCreate({ ...form, name: form.name.trim() });
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Could not create project');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="home-research-modal" role="dialog" aria-modal="true" aria-labelledby="new-research-title">
+      <form className="home-research-modal__card" onSubmit={submit}>
+        <h2 id="new-research-title">New Research Project</h2>
+        <label>
+          Project name *
+          <input className="lt-input" value={form.name} onChange={setField('name')} required autoFocus />
+        </label>
+        <label>
+          Principal investigator
+          <input className="lt-input" value={form.pi} onChange={setField('pi')} />
+        </label>
+        <label>
+          Researcher
+          <input className="lt-input" value={form.researcher} onChange={setField('researcher')} />
+        </label>
+        <label>
+          Description
+          <textarea className="lt-input" rows={3} value={form.description} onChange={setField('description')} />
+        </label>
+        <label>
+          Start date
+          <input className="lt-input" type="date" value={form.startDate} onChange={setField('startDate')} />
+        </label>
+        <label>
+          End date
+          <input className="lt-input" type="date" value={form.endDate} onChange={setField('endDate')} />
+        </label>
+        <label>
+          Location
+          <input className="lt-input" value={form.location} onChange={setField('location')} />
+        </label>
+        <label>
+          Notes
+          <textarea className="lt-input" rows={2} value={form.notes} onChange={setField('notes')} />
+        </label>
+        {error && <p className="home-research__empty">{error}</p>}
+        <div className="home-research-modal__actions">
+          <button type="button" className="lt-btn" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button type="submit" className="lt-btn lt-btn--primary" disabled={busy}>
+            {busy ? 'Creating…' : 'Create & Open'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ResearchProjects({ projects, isElectron, onNew, onOpen, onImport, onDelete }) {
+  return (
+    <section className="home-research home-animate" style={{ '--stagger': 1 }}>
+      <div className="home-research__header">
+        <h2 className="home__section-label">Research Projects</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isElectron && (
+            <>
+              <button type="button" className="home__import-btn" onClick={onImport}>
+                Import…
+              </button>
+              <button type="button" className="lt-btn lt-btn--primary lt-btn--small" onClick={onNew}>
+                New Project
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      {!isElectron ? (
+        <p className="home-research__web-note">
+          Research Projects open in a dedicated desktop window. Use the Benchy desktop app (not the web build).
+        </p>
+      ) : projects.length === 0 ? (
+        <p className="home-research__empty">
+          No projects yet. Create a new Research Project to begin organizing your experiments.
+        </p>
+      ) : (
+        <ul className="home-research__list">
+          {projects.map((p) => (
+            <li key={p.projectId}>
+              <button type="button" className="home-research__item" onClick={() => onOpen(p.projectId)}>
+                <span>
+                  <span className="home__project-name">{p.name}</span>
+                  <span className="home-research__meta">
+                    {p.pi ? `${p.pi} · ` : ''}
+                    {formatWhen(p.lastModifiedAt)}
+                  </span>
+                </span>
+              </button>
+              {onDelete && (
+                <button
+                  type="button"
+                  className="lt-btn lt-btn--small"
+                  aria-label={`Delete ${p.name}`}
+                  onClick={() => {
+                    if (window.confirm(`Delete research project "${p.name}"?`)) onDelete(p.projectId);
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ContinueWorking({ projects, onOpen, onRename, onDelete, onImport }) {
   return (
-    <section className="home__continue home-animate" style={{ '--stagger': 1 }}>
+    <section className="home__continue home-animate" style={{ '--stagger': 2 }}>
       <div className="home__continue-head">
-        <h2 className="home__section-label">Continue working</h2>
+        <h2 className="home__section-label">Quick Analysis</h2>
         <button type="button" className="home__import-btn" onClick={onImport}>
           Import project…
         </button>
       </div>
       {projects.length === 0 ? (
         <p className="home__continue-empty">
-          No saved projects yet. Your work autosaves — saved projects appear here.
+          Tab sessions for quick work — autosaved separately from Research Projects.
         </p>
       ) : (
         <div className="home__project-grid">
@@ -187,7 +334,15 @@ export default function HomePage({
   onOpenRecentFile,
   onRemoveRecentFile,
   onClearRecentFiles,
+  isElectron = false,
+  researchProjects = [],
+  onCreateResearchProject,
+  onOpenResearchProject,
+  onImportResearchProject,
+  onDeleteResearchProject,
 }) {
+  const [newResearchOpen, setNewResearchOpen] = useState(false);
+
   const enrichedTools = useMemo(
     () =>
       getActiveTools(TOOL_LIST).map((tool) => {
@@ -237,11 +392,18 @@ export default function HomePage({
 
       <header className="home__welcome home-animate" style={{ '--stagger': 0 }}>
         <p className="home__greeting">{getGreeting()}</p>
-        <h1 className="home__title">Lab Tools</h1>
-        <p className="home__subtitle">
-          Molecular biology analysis workspace — open a module to begin a session.
-        </p>
+        <h1 className="home__title">{APP_NAME}</h1>
+        <p className="home__subtitle">{APP_TAGLINE}</p>
       </header>
+
+      <ResearchProjects
+        projects={researchProjects}
+        isElectron={isElectron}
+        onNew={() => setNewResearchOpen(true)}
+        onOpen={onOpenResearchProject}
+        onImport={onImportResearchProject}
+        onDelete={onDeleteResearchProject}
+      />
 
       <ContinueWorking
         projects={recentProjects}
@@ -326,6 +488,12 @@ export default function HomePage({
           </div>
         </section>
       ))}
+
+      <NewResearchProjectModal
+        open={newResearchOpen}
+        onClose={() => setNewResearchOpen(false)}
+        onCreate={onCreateResearchProject}
+      />
     </div>
   );
 }

@@ -38,13 +38,12 @@ export const TOOL_MANIFEST = {
     accent: 'var(--lt-brand-blue)',
     Icon: 'qpcr',
   },
-  'figure-generator': {
+  'figure-studio': {
     category: 'visualization',
-    tags: ['figure', 'chart', 'publication', 'csv', 'excel'],
-    hint: 'Bar · scatter · box · violin · PNG/SVG/PDF export',
+    tags: ['figure', 'plot', 'prism', 'export', 'svg'],
+    hint: 'Tables · bar/line/scatter · multi-panel · SVG/PNG export',
     accent: 'var(--lt-brand-blue)',
     Icon: 'figure',
-    archived: true,
   },
 };
 

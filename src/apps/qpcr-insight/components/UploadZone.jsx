@@ -1,24 +1,8 @@
-import { useRef, useState } from 'react';
 import { ImageImportSpinner } from '../../../shared/image/ImageImportStates';
+import FileDropZone from '../../../shared/ui/FileDropZone';
 import '../../../shared/image/image-import.css';
 
 export default function UploadZone({ loading, error, onFileSelect, onDismissError }) {
-  const inputRef = useRef(null);
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleFile = (file) => {
-    if (!file) return;
-    const name = file.name.toLowerCase();
-    if (!name.endsWith('.eds') && !/\.xlsx?$/.test(name)) return;
-    onFileSelect(file);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFile(e.dataTransfer.files?.[0]);
-  };
-
   return (
     <div className="qi-upload-container">
       {error && (
@@ -40,39 +24,18 @@ export default function UploadZone({ loading, error, onFileSelect, onDismissErro
           <ImageImportSpinner label="Reading experiment file..." />
         </div>
       ) : (
-        <div
-          className={`upload-zone${dragOver ? ' upload-zone--active' : ''}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
+        <FileDropZone
+          accept=".eds,.xlsx,.xls"
+          title="Drop your QuantStudio file here"
+          formats="EDS, XLSX"
+          onFiles={(files) => {
+            const file = files[0];
+            if (!file) return;
+            const name = file.name.toLowerCase();
+            if (!name.endsWith('.eds') && !/\.xlsx?$/.test(name)) return;
+            onFileSelect(file);
           }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              inputRef.current?.click();
-            }
-          }}
-        >
-          <div className="upload-zone__icon">+</div>
-          <p className="upload-zone__title">Drop your QuantStudio file here</p>
-          <p className="upload-zone__subtitle">or click to browse</p>
-          <p className="upload-zone__formats">EDS, XLSX</p>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".eds,.xlsx,.xls"
-            className="upload-zone__input"
-            onChange={(e) => {
-              handleFile(e.target.files?.[0]);
-              e.target.value = '';
-            }}
-          />
-        </div>
+        />
       )}
     </div>
   );

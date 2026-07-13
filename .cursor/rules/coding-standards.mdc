@@ -1,0 +1,35 @@
+---
+description: Benchy coding standards — style, deps, protected formulas
+alwaysApply: true
+---
+
+# Benchy — Coding Standards
+
+## Style
+
+- Match existing JSX/JS patterns; do not migrate files to TypeScript unless asked.
+- Prefer maintainable, local changes over drive-by refactors.
+- Avoid unnecessary dependencies — the stack is intentionally small.
+- Explain non-obvious scientific or persistence logic with brief comments when needed.
+
+## Protected formulas and data (do not “improve”)
+
+Do **not** change these without explicit user approval **and** relevant tests:
+
+| Area | Location |
+|------|----------|
+| Gel Fiji/Excel background, corrected, ratio | `src/apps/gel-quantification/engine/fijiExcelWorkflow.js` |
+| Gel IntDen / grayscale | `measurements.js`, `fijiConstants.js` |
+| qPCR ΔΔCt / RQ | `src/apps/qpcr-insight/utils/computeDDCt.js` |
+| Endpoint categories A–I | `src/apps/endpoint-analysis/constants/categories.js` |
+| CFU | `src/apps/colony-counter/utils/cfu.js` |
+| Dilution / master-mix | `src/shared/labCalculators.js` |
+| Strain reference | `src/shared/data/strains.json` |
+| `.benchy` schema | `src/shared/persistence/labtoolsSchema.js` |
+
+After gel math changes: `npm run test:gel`. After persistence/schema: `npm run test:persistence`.
+
+## Tooling
+
+- Node `>=22.9`, npm 11 lockfile — run `npm run validate:lock` / do not hand-edit lockfile casually.
+- Do not skip husky hooks unless the user explicitly asks.

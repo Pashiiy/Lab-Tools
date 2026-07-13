@@ -20,6 +20,7 @@ export default function Sidebar({
   raw,
   gelCount,
   loading,
+  loadingLabel = 'Loading…',
   displayAdjustments,
   inverted,
   roiTemplate,
@@ -29,6 +30,7 @@ export default function Sidebar({
   strainName,
   description,
   onAddGel,
+  onAddGels,
   onDisplayAdjustmentsChange,
   onInvertedChange,
   onTemplateChange,
@@ -48,11 +50,11 @@ export default function Sidebar({
         <label className="gq-sidebar__label">Gel dataset</label>
         <button
           type="button"
-          className="gq-btn gq-btn--block"
+          className="lt-btn lt-btn--block"
           disabled={loading}
           onClick={() => fileRef.current?.click()}
         >
-          {loading ? 'Loading…' : raw ? 'Add gel image' : 'Upload gel image'}
+          {loading ? loadingLabel : raw ? 'Add gel image' : 'Upload gel image'}
         </button>
         <input
           ref={fileRef}
@@ -63,8 +65,12 @@ export default function Sidebar({
           onChange={async (e) => {
             const files = [...(e.target.files ?? [])];
             e.target.value = '';
-            for (const file of files) {
-              await onAddGel(file);
+            if (onAddGels) {
+              await onAddGels(files);
+            } else {
+              for (const file of files) {
+                await onAddGel(file);
+              }
             }
           }}
         />
@@ -112,7 +118,7 @@ export default function Sidebar({
           </div>
           <button
             type="button"
-            className="gq-btn gq-btn--block gq-sidebar__reset-template"
+            className="lt-btn lt-btn--block gq-sidebar__reset-template"
             onClick={onResetTemplateDefaults}
           >
             Reset to defaults (30×70 / 45×85)

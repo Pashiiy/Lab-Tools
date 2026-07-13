@@ -1,4 +1,6 @@
 import { useLayoutDebug } from '../shared/useLayoutDebug';
+import { APP_NAME, APP_DESCRIPTION, APP_TAGLINE } from '../shared/brand';
+import { APP_VERSION } from '../shared/appVersion';
 
 export default function SettingsPanel({ theme, setTheme }) {
   const { layoutDebug, setLayoutDebug } = useLayoutDebug();
@@ -6,7 +8,7 @@ export default function SettingsPanel({ theme, setTheme }) {
   return (
     <div className="settings-panel">
       <section className="settings-panel__section">
-        <h3 className="lt-type-section-title">Appearance</h3>
+        <h3 className="lt-type-section-title">Benchy Settings</h3>
         <label className="settings-panel__row">
           <span>Theme</span>
           <select
@@ -38,11 +40,13 @@ export default function SettingsPanel({ theme, setTheme }) {
       <section className="settings-panel__section">
         <h3 className="lt-type-section-title">About</h3>
         <p className="lt-type-body">
-          Lab Tools — molecular biology analysis platform for the Bloom Lab.
+          <strong>{APP_NAME}</strong> v{APP_VERSION}
         </p>
+        <p className="lt-type-body">{APP_TAGLINE}</p>
+        <p className="lt-type-body">{APP_DESCRIPTION}</p>
         <dl className="settings-panel__meta">
           <dt>Modules</dt>
-          <dd>qPCR Analysis, Gel, Endpoint, Colony Counter</dd>
+          <dd>qPCR Analysis, Gel Quantification, Endpoint Analysis, Colony Counter</dd>
           <dt>Utilities</dt>
           <dd>Notepad, Strain Reference, Lab Calculators</dd>
         </dl>

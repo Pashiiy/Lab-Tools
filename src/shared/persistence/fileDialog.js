@@ -1,5 +1,5 @@
 /**
- * Platform-aware text file save/open for `.labtools` projects.
+ * Platform-aware text file save/open for `.benchy` projects.
  *
  * Electron → native save/open dialogs over IPC (window.electronAPI.project*).
  * Web      → blob download + hidden <input type=file> read.
@@ -22,10 +22,10 @@ export async function downloadText(text, filename) {
 }
 
 /**
- * @param {string[]} acceptExtensions e.g. ['.labtools', '.json']
+ * @param {string[]} acceptExtensions e.g. ['.benchy', '.json']
  * @returns {Promise<string|null>} file text, or null if cancelled
  */
-export async function pickTextFile(acceptExtensions = ['.labtools']) {
+export async function pickTextFile(acceptExtensions = ['.benchy']) {
   if (typeof window !== 'undefined' && window.electronAPI?.openProjectFile) {
     const res = await window.electronAPI.openProjectFile();
     return res?.success ? res.content : null;

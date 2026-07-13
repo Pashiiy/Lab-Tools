@@ -1,31 +1,45 @@
 /**
- * Unified `.labtools` project format.
+ * Unified `.benchy` project format (Quick Analysis workspaces).
  *
- * One versioned container for every tool in the app. Tools never define their
- * own file format — they register serialize/deserialize handlers (see
- * toolStateRegistry.js) and their state is embedded under `tools[tabId].state`.
+ * One versioned container for every tool. Tools register serialize/deserialize
+ * handlers; state is embedded under `tools[tabId].state`.
+ *
+ * Legacy: `.labtools` / `format: labtools-project` files are accepted on import
+ * and normalized to the Benchy format on migrate/save.
  *
  * Schema (schemaVersion 1):
  *
  *   {
- *     format: 'labtools-project',
+ *     format: 'benchy-project',
  *     schemaVersion: 1,
  *     metadata:  { id, name, appVersion, createdAt, lastModifiedAt },
  *     workspace: { tabs: [{ id, toolId, label }], activeTabId },
  *     tools:     { [tabId]: { toolId, stateVersion, state } },
  *     files:     { [fileId]: { name, type, size, toolId, blobRef|dataUrl, addedAt } },
- *     settings:  { theme, ... },              // project-relevant UI settings
- *     session:   { savedAt, reason }          // restoration metadata
+ *     settings:  { theme, ... },
+ *     session:   { savedAt, reason }
  *   }
- *
- * `measurements` and `analysisResults` are NOT top-level: each tool owns them
- * inside its serialized `state`, which keeps the container tool-agnostic and
- * lets new tools add data without a schema redesign.
  */
 
-export const LABTOOLS_FORMAT = 'labtools-project';
-export const LABTOOLS_SCHEMA_VERSION = 1;
-export const LABTOOLS_EXTENSION = 'labtools';
+export const BENCHY_FORMAT = 'benchy-project';
+export const LEGACY_LABTOOLS_FORMAT = 'labtools-project';
+export const BENCHY_SCHEMA_VERSION = 1;
+export const BENCHY_EXTENSION = 'benchy';
+export const LEGACY_LABTOOLS_EXTENSION = 'labtools';
+
+/** @deprecated Use BENCHY_FORMAT — kept for older imports */
+export const LABTOOLS_FORMAT = BENCHY_FORMAT;
+/** @deprecated Use BENCHY_SCHEMA_VERSION */
+export const LABTOOLS_SCHEMA_VERSION = BENCHY_SCHEMA_VERSION;
+/** @deprecated Use BENCHY_EXTENSION */
+export const LABTOOLS_EXTENSION = BENCHY_EXTENSION;
+
+export const PROJECT_OPEN_EXTENSIONS = [
+  `.${BENCHY_EXTENSION}`,
+  `.${LEGACY_LABTOOLS_EXTENSION}`,
+  '.colonycount',
+  '.json',
+];
 
 let idCounter = 0;
 function genId(prefix) {
@@ -33,12 +47,16 @@ function genId(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`;
 }
 
+function isKnownProjectFormat(format) {
+  return format === BENCHY_FORMAT || format === LEGACY_LABTOOLS_FORMAT;
+}
+
 /** Create a new, empty project container. */
 export function createEmptyProject({ name = 'Untitled Project', appVersion = '0.0.0' } = {}) {
   const now = new Date().toISOString();
   return {
-    format: LABTOOLS_FORMAT,
-    schemaVersion: LABTOOLS_SCHEMA_VERSION,
+    format: BENCHY_FORMAT,
+    schemaVersion: BENCHY_SCHEMA_VERSION,
     metadata: {
       id: genId('proj'),
       name,
@@ -54,8 +72,13 @@ export function createEmptyProject({ name = 'Untitled Project', appVersion = '0.
   };
 }
 
+export function isBenchyProject(obj) {
+  return !!obj && isKnownProjectFormat(obj.format) && typeof obj.schemaVersion === 'number';
+}
+
+/** @deprecated Use isBenchyProject */
 export function isLabtoolsProject(obj) {
-  return !!obj && obj.format === LABTOOLS_FORMAT && typeof obj.schemaVersion === 'number';
+  return isBenchyProject(obj);
 }
 
 /** Structural validation. Returns { valid, errors }. */
@@ -64,7 +87,7 @@ export function validateProject(obj) {
   if (!obj || typeof obj !== 'object') {
     return { valid: false, errors: ['Not an object'] };
   }
-  if (obj.format !== LABTOOLS_FORMAT) errors.push(`Unexpected format: ${obj.format}`);
+  if (!isKnownProjectFormat(obj.format)) errors.push(`Unexpected format: ${obj.format}`);
   if (typeof obj.schemaVersion !== 'number') errors.push('Missing schemaVersion');
   if (!obj.metadata || typeof obj.metadata.name !== 'string') errors.push('Missing metadata.name');
   if (!obj.workspace || !Array.isArray(obj.workspace.tabs)) errors.push('Missing workspace.tabs[]');
@@ -73,15 +96,15 @@ export function validateProject(obj) {
 }
 
 /**
- * Upgrade an older-schema project to the current version. Pure and additive —
- * never drops unknown fields, so forward-written data survives round-trips.
+ * Upgrade / normalize to current Benchy schema. Pure and additive.
  */
 export function migrateProject(obj) {
-  if (!isLabtoolsProject(obj)) return obj;
+  if (!isBenchyProject(obj)) return obj;
   let next = obj;
-  // Future migrations: if (next.schemaVersion < 2) next = upgradeV1toV2(next); ...
-  if (next.schemaVersion > LABTOOLS_SCHEMA_VERSION) {
-    // Newer file opened by older app: keep data, clamp version note.
+  if (next.format === LEGACY_LABTOOLS_FORMAT) {
+    next = { ...next, format: BENCHY_FORMAT };
+  }
+  if (next.schemaVersion > BENCHY_SCHEMA_VERSION) {
     next = { ...next, _openedWithNewerSchema: next.schemaVersion };
   }
   return next;
@@ -94,7 +117,7 @@ export function isLegacyColonyCounter(obj) {
   return (
     !!obj &&
     typeof obj === 'object' &&
-    !isLabtoolsProject(obj) &&
+    !isBenchyProject(obj) &&
     typeof obj.version === 'number' &&
     'dots' in obj &&
     ('imageData' in obj || 'imageName' in obj)
@@ -102,7 +125,7 @@ export function isLegacyColonyCounter(obj) {
 }
 
 /**
- * Convert a legacy `.colonycount` session into a unified `.labtools` project
+ * Convert a legacy `.colonycount` session into a unified `.benchy` project
  * containing a single colony-counter tab. Preserves all recoverable fields.
  */
 export function migrateLegacyColonyCounter(legacy, { appVersion = '0.0.0' } = {}) {
@@ -116,7 +139,6 @@ export function migrateLegacyColonyCounter(legacy, { appVersion = '0.0.0' } = {}
   project.tools[tabId] = {
     toolId: 'colony-counter',
     stateVersion: legacy.version ?? 1,
-    // The colony tool's deserialize handler understands this shape directly.
     state: legacy,
     migratedFrom: 'colonycount',
   };
@@ -135,20 +157,20 @@ export function serializeProject(project) {
 
 /**
  * Parse a string/object into a validated, migrated project. Also accepts and
- * auto-migrates legacy `.colonycount` content. Throws on unrecoverable input.
+ * auto-migrates legacy `.colonycount` and `.labtools` content.
  */
 export function deserializeProject(input, { appVersion = '0.0.0' } = {}) {
   const obj = typeof input === 'string' ? JSON.parse(input) : input;
   if (isLegacyColonyCounter(obj)) {
     return migrateLegacyColonyCounter(obj, { appVersion });
   }
-  if (!isLabtoolsProject(obj)) {
-    throw new Error('Unrecognized project file (not a .labtools or legacy colony session).');
+  if (!isBenchyProject(obj)) {
+    throw new Error('Unrecognized project file (not a .benchy, .labtools, or legacy colony session).');
   }
   const migrated = migrateProject(obj);
   const { valid, errors } = validateProject(migrated);
   if (!valid) {
-    throw new Error(`Invalid .labtools project: ${errors.join('; ')}`);
+    throw new Error(`Invalid .benchy project: ${errors.join('; ')}`);
   }
   return migrated;
 }
@@ -158,6 +180,7 @@ export function touchProject(project, reason = 'autosave') {
   const now = new Date().toISOString();
   return {
     ...project,
+    format: BENCHY_FORMAT,
     metadata: { ...project.metadata, lastModifiedAt: now },
     session: { ...project.session, savedAt: now, reason },
   };

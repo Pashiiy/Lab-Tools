@@ -83,7 +83,7 @@ export function useTabManager({ onToolOpened } = {}) {
   }, []);
 
   /**
-   * Restore a full workspace from a saved `.labtools` project. Recreates tabs
+   * Restore a full workspace from a saved `.benchy` project. Recreates tabs
    * with their ORIGINAL ids (so tool state maps correctly) and attaches each
    * tool's serialized state as `initialState` for the tool hook to hydrate.
    */

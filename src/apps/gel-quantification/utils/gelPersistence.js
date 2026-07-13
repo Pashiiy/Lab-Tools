@@ -1,5 +1,5 @@
 /**
- * Serialize / restore gel-quantification state for the unified `.labtools`
+ * Serialize / restore gel-quantification state for the unified `.benchy`
  * project format.
  *
  * Raw 16-bit pixel buffers are base64-encoded so the full image (and therefore

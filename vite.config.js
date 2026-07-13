@@ -13,9 +13,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'favicon.svg'],
       manifest: {
-        name: 'Lab Tools',
-        short_name: 'LabTools',
-        description: 'Endpoint analysis and colony counting tools for microbiology labs',
+        name: 'Benchy',
+        short_name: 'Benchy',
+        description: 'Scientific Image Analysis & Research Workspace',
         start_url: './',
         display: 'standalone',
         background_color: '#13294B',

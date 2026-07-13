@@ -65,7 +65,7 @@ export default function CategoryPanel({
         })}
       </ul>
       {categories.length < 8 && (
-        <button type="button" className="btn btn--small" onClick={onAddCategory}>
+        <button type="button" className="lt-btn lt-btn--small" onClick={onAddCategory}>
           + Add Category
         </button>
       )}

@@ -117,7 +117,7 @@ function RoiPanel({ tag, rois, roiId, setRoiId, fiji, setFiji, report, parityMod
             </option>
           ))}
         </select>
-        <button type="button" className="gq-btn gq-parity__fill" disabled={!app} onClick={fillFromApp}>
+        <button type="button" className="lt-btn gq-parity__fill" disabled={!app} onClick={fillFromApp}>
           Copy app → Fiji
         </button>
       </div>
@@ -286,7 +286,7 @@ export default function ParityAudit({ rois = [], fijiParityMode = true, onFijiPa
             />
             <span>Fiji Parity Mode</span>
           </label>
-          <button type="button" className="gq-btn" disabled={!reportA} onClick={copyReport}>
+          <button type="button" className="lt-btn" disabled={!reportA} onClick={copyReport}>
             Copy report
           </button>
         </div>

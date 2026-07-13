@@ -1,7 +1,7 @@
 {
-  "name": "Lab Tools",
-  "short_name": "LabTools",
-  "description": "Endpoint analysis, colony counting, and gel quantification for microbiology labs",
+  "name": "Benchy",
+  "short_name": "Benchy",
+  "description": "Scientific Image Analysis & Research Workspace",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#13294B",

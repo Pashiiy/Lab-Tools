@@ -3,10 +3,17 @@ import {
   DEFAULT_CATEGORIES,
   createCategory,
   getCategoryCounts,
+  ensureTypeCategories,
+  categoryForColonyType,
 } from '../utils/categories';
 import {
-  buildSessionObject,
-  syncDotIdCounter,
+  buildBatchSessionObject,
+  buildPlateRecord,
+  createPlateId,
+  defaultPlateMeta,
+  deserializeCfu,
+  migrateSession,
+  syncDotIdCounterAcrossPlates,
   validateSession,
 } from '../utils/session';
 import {
@@ -17,6 +24,7 @@ import { loadImageUniversal } from '../../../shared/image/imageLoader';
 import { trackRecentFile } from '../../../shared/persistence/trackRecentFile.js';
 import { useOpenFileListener } from '../../../shared/persistence/useOpenFileListener.js';
 import { createEmptyProject, isLabtoolsProject } from '../../../shared/persistence/labtoolsSchema.js';
+import { isEditableTarget } from '../../../shared/input/isEditableTarget.js';
 import { downloadText, pickTextFile } from '../../../shared/persistence/fileDialog.js';
 import { importProjectFromText } from '../../../shared/persistence/projectStore.js';
 import { APP_VERSION } from '../../../shared/appVersion';
@@ -32,7 +40,20 @@ function hexToRgba(hex, alpha) {
 
 export { hexToRgba };
 
+function encodeOriginalSrc(canvas, cacheRef) {
+  if (!canvas) return null;
+  const cache = cacheRef.current;
+  if (cache.canvas === canvas && cache.dataUrl) return cache.dataUrl;
+  const dataUrl = canvas.toDataURL('image/png');
+  cacheRef.current = { canvas, dataUrl };
+  return dataUrl;
+}
+
 export function useColonyCounter(instanceId, isActive = true, initialState = null) {
+  const [plates, setPlates] = useState([]);
+  const [activePlateId, setActivePlateId] = useState(null);
+
+  // Active-plate live editor state (synced into plates[] on switch / snapshot)
   const [dots, setDots] = useState([]);
   const [history, setHistory] = useState([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -42,8 +63,16 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
   const [opacity, setOpacity] = useState(0.7);
   const [image, setImage] = useState(null);
   const [loadingImage, setLoadingImage] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Loading image…');
   const [uploadError, setUploadError] = useState(null);
+  const [plateMeta, setPlateMeta] = useState(() => defaultPlateMeta());
+
   const fullResCanvasRef = useRef(null);
+  const originalSrcCacheRef = useRef({ canvas: null, dataUrl: null });
+  const platesRef = useRef(plates);
+  const activePlateIdRef = useRef(activePlateId);
+  const liveRef = useRef({});
+
   const [dilutionMode, setDilutionMode] = useState('preset');
   const [dilutionExponent, setDilutionExponent] = useState(1);
   const [customDilution, setCustomDilution] = useState('');
@@ -57,7 +86,32 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   const skipDirtyRef = useRef(false);
   const sessionFileInputRef = useRef(null);
+  const addPlateFileInputRef = useRef(null);
   const dirtySinceRef = useRef(null);
+
+  useEffect(() => {
+    platesRef.current = plates;
+  }, [plates]);
+  useEffect(() => {
+    activePlateIdRef.current = activePlateId;
+  }, [activePlateId]);
+
+  useEffect(() => {
+    liveRef.current = {
+      image,
+      dots,
+      categories,
+      activeCategory,
+      dotRadius,
+      opacity,
+      dilutionMode,
+      dilutionExponent,
+      customDilution,
+      volumeMl,
+      plateMeta,
+      sessionName,
+    };
+  });
 
   const markDirty = useCallback(() => {
     if (skipDirtyRef.current) return;
@@ -77,57 +131,53 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     [dots, categories]
   );
 
-  const getSessionSnapshot = useCallback(
-    () =>
-      buildSessionObject({
-        image,
-        dots,
-        categories,
-        activeCategory,
-        dotRadius,
-        opacity,
-        dilutionMode,
-        dilutionExponent,
-        customDilution,
-        volumeMl,
-        sessionName,
-      }),
-    [
-      image,
-      dots,
-      categories,
-      activeCategory,
-      dotRadius,
-      opacity,
-      dilutionMode,
-      dilutionExponent,
-      customDilution,
-      volumeMl,
-      sessionName,
-    ]
-  );
+  const captureActivePlate = useCallback(() => {
+    const live = liveRef.current;
+    const id = activePlateIdRef.current;
+    if (!id || !live.image) return null;
+    const originalSrc = encodeOriginalSrc(fullResCanvasRef.current, originalSrcCacheRef);
+    return buildPlateRecord({
+      id,
+      name: live.plateMeta.sampleName || live.image.name || 'Plate',
+      image: live.image,
+      dots: live.dots,
+      activeCategory: live.activeCategory,
+      dotRadius: live.dotRadius,
+      opacity: live.opacity,
+      dilutionMode: live.dilutionMode,
+      dilutionExponent: live.dilutionExponent,
+      customDilution: live.customDilution,
+      volumeMl: live.volumeMl,
+      meta: live.plateMeta,
+      originalSrc,
+    });
+  }, []);
 
-  const applySession = useCallback((session) => {
-    if (!validateSession(session)) {
-      alert('This file appears to be corrupted or incompatible.');
-      return false;
-    }
+  const syncActiveIntoPlates = useCallback(() => {
+    const captured = captureActivePlate();
+    if (!captured) return platesRef.current;
+    const next = platesRef.current.map((p) => (p.id === captured.id ? captured : p));
+    platesRef.current = next;
+    setPlates(next);
+    return next;
+  }, [captureActivePlate]);
 
+  const applyPlateToEditor = useCallback((plate) => {
     skipDirtyRef.current = true;
 
-    const displaySrc = session.imageData;
+    const displaySrc = plate.imageData;
     const applyImageState = (displayImg, fullDims) => {
       setImage({
         src: displaySrc,
-        naturalWidth: fullDims?.width ?? displayImg.naturalWidth,
-        naturalHeight: fullDims?.height ?? displayImg.naturalHeight,
-        displayWidth: displayImg.naturalWidth,
-        displayHeight: displayImg.naturalHeight,
-        name: session.imageName,
+        naturalWidth: fullDims?.width ?? plate.naturalWidth ?? displayImg.naturalWidth,
+        naturalHeight: fullDims?.height ?? plate.naturalHeight ?? displayImg.naturalHeight,
+        displayWidth: plate.displayWidth ?? displayImg.naturalWidth,
+        displayHeight: plate.displayHeight ?? displayImg.naturalHeight,
+        name: plate.imageName,
       });
     };
 
-    if (session.originalSrc) {
+    if (plate.originalSrc) {
       const fullImg = new Image();
       fullImg.onload = () => {
         const canvas = document.createElement('canvas');
@@ -135,6 +185,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
         canvas.height = fullImg.naturalHeight;
         canvas.getContext('2d').drawImage(fullImg, 0, 0);
         fullResCanvasRef.current = canvas;
+        originalSrcCacheRef.current = { canvas, dataUrl: plate.originalSrc };
 
         const displayImg = new Image();
         displayImg.onload = () => {
@@ -145,57 +196,101 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
         };
         displayImg.src = displaySrc;
       };
-      fullImg.src = session.originalSrc;
+      fullImg.src = plate.originalSrc;
     } else {
       const img = new Image();
       img.onload = () => {
         fullResCanvasRef.current = null;
+        originalSrcCacheRef.current = { canvas: null, dataUrl: null };
         applyImageState(img, null);
       };
       img.src = displaySrc;
     }
 
-    const sessionDots = session.dots || [];
-    nextId = syncDotIdCounter(sessionDots);
-    setDots(sessionDots);
-    setHistory([sessionDots]);
+    const plateDots = plate.dots || [];
+    setDots(plateDots);
+    setHistory([plateDots]);
     setHistoryIndex(0);
-    setCategories(session.categories || DEFAULT_CATEGORIES);
-    setActiveCategory(
-      session.activeCategory || session.categories?.[0]?.id || 'cat-1'
+    setActiveCategory(plate.activeCategory || 'cat-1');
+    setDotRadius(plate.dotRadius || 12);
+    setOpacity(plate.opacity ?? 0.7);
+
+    const cfu = deserializeCfu(plate.cfu);
+    setDilutionMode(cfu.dilutionMode);
+    setDilutionExponent(cfu.dilutionExponent);
+    setCustomDilution(cfu.customDilution);
+    setVolumeMl(cfu.volumeMl);
+
+    setPlateMeta(
+      defaultPlateMeta({
+        sampleName: plate.sampleName || plate.name || '',
+        notes: plate.notes || '',
+        date: plate.date || new Date().toISOString().slice(0, 10),
+        strain: plate.strain || '',
+        treatment: plate.treatment || '',
+        timePoint: plate.timePoint || '',
+        replicate: plate.replicate || '',
+      })
     );
-    setDotRadius(session.dotRadius || 12);
-    setOpacity(session.opacity ?? 0.7);
-
-    const cfu = session.cfu || {};
-    const useCustom =
-      cfu.dilutionMode === 'custom' ||
-      (cfu.customDilution != null && cfu.customDilution !== '');
-
-    if (useCustom) {
-      setDilutionMode('custom');
-      setCustomDilution(String(cfu.customDilution ?? ''));
-    } else {
-      setDilutionMode('preset');
-      setDilutionExponent(Math.abs(cfu.dilutionExponent ?? 4));
-      setCustomDilution('');
-    }
-
-    setVolumeMl(cfu.volumeMl ?? 0.1);
-    setSessionName(
-      session.imageName?.replace(/\.[^/.]+$/, '') || 'colony-session'
-    );
-    setLastSaved(session.savedAt ? new Date(session.savedAt) : new Date());
-    setIsDirty(false);
-    dirtySinceRef.current = null;
-    setRemindSavePulse(false);
 
     requestAnimationFrame(() => {
       skipDirtyRef.current = false;
     });
-
-    return true;
   }, []);
+
+  const switchToPlate = useCallback(
+    (plateId) => {
+      if (!plateId || plateId === activePlateIdRef.current) return;
+      syncActiveIntoPlates();
+      const plate = platesRef.current.find((p) => p.id === plateId);
+      if (!plate?.imageData) return;
+      setActivePlateId(plateId);
+      activePlateIdRef.current = plateId;
+      applyPlateToEditor(plate);
+    },
+    [syncActiveIntoPlates, applyPlateToEditor]
+  );
+
+  const applySession = useCallback(
+    (session) => {
+      if (!validateSession(session)) {
+        alert('This file appears to be corrupted or incompatible.');
+        return false;
+      }
+
+      const migrated = migrateSession(session);
+      skipDirtyRef.current = true;
+
+      const cats = migrated.categories || DEFAULT_CATEGORIES;
+      setCategories(cats);
+      nextId = syncDotIdCounterAcrossPlates(migrated.plates);
+
+      platesRef.current = migrated.plates;
+      setPlates(migrated.plates);
+
+      const activeId =
+        migrated.activePlateId && migrated.plates.some((p) => p.id === migrated.activePlateId)
+          ? migrated.activePlateId
+          : migrated.plates[0].id;
+      setActivePlateId(activeId);
+      activePlateIdRef.current = activeId;
+
+      setSessionName(migrated.sessionName || 'colony-session');
+      setLastSaved(migrated.savedAt ? new Date(migrated.savedAt) : new Date());
+      setIsDirty(false);
+      dirtySinceRef.current = null;
+      setRemindSavePulse(false);
+
+      const active = migrated.plates.find((p) => p.id === activeId);
+      if (active) applyPlateToEditor(active);
+
+      requestAnimationFrame(() => {
+        skipDirtyRef.current = false;
+      });
+      return true;
+    },
+    [applyPlateToEditor]
+  );
 
   const pushHistory = useCallback(
     (newDots) => {
@@ -236,6 +331,10 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
         radius: dotRadius,
         color: activeCat.color,
         categoryId: activeCat.id,
+        source: 'manual',
+        manuallyAdded: true,
+        colonyType: 'yeast',
+        manuallyEdited: false,
       };
       pushHistory([...dots, newDot]);
     },
@@ -249,6 +348,73 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     [dots, pushHistory]
   );
 
+  const moveDot = useCallback(
+    (dotId, x, y) => {
+      pushHistory(
+        dots.map((d) => (d.id === dotId ? { ...d, x, y, manuallyEdited: true } : d))
+      );
+    },
+    [dots, pushHistory]
+  );
+
+  /** Replace active-plate dots with Auto Count results (one history entry). */
+  const applyAutoColonies = useCallback(
+    (colonies) => {
+      const list = Array.isArray(colonies) ? colonies : [];
+      setCategories((prev) => ensureTypeCategories(prev));
+      const cats = ensureTypeCategories(categories);
+      const newDots = list.map((c) => {
+        const r = Number(c.radius);
+        const colonyType = c.colonyType === 'contaminant' || c.colonyType === 'uncertain'
+          ? c.colonyType
+          : 'yeast';
+        const cat = categoryForColonyType(cats, colonyType) || activeCat;
+        if (!cat) return null;
+        return {
+          id: nextId++,
+          x: Number(c.x),
+          y: Number(c.y),
+          radius: Number.isFinite(r) && r > 0 ? Math.max(3, Math.round(r)) : dotRadius,
+          color: cat.color,
+          categoryId: cat.id,
+          area: c.area ?? null,
+          confidence: c.confidence ?? null,
+          circularity: c.circularity ?? null,
+          source: 'auto',
+          manuallyAdded: false,
+          colonyType,
+          manuallyEdited: false,
+        };
+      }).filter(Boolean);
+      pushHistory(newDots);
+      return newDots.length;
+    },
+    [activeCat, categories, dotRadius, pushHistory]
+  );
+
+  const setDotColonyType = useCallback(
+    (dotId, colonyType) => {
+      const type = colonyType === 'contaminant' || colonyType === 'uncertain' ? colonyType : 'yeast';
+      const cats = ensureTypeCategories(categories);
+      if (cats !== categories) setCategories(cats);
+      const cat = categoryForColonyType(cats, type);
+      pushHistory(
+        dots.map((d) =>
+          d.id === dotId
+            ? {
+                ...d,
+                colonyType: type,
+                categoryId: cat?.id || d.categoryId,
+                color: cat?.color || d.color,
+                manuallyEdited: true,
+              }
+            : d
+        )
+      );
+    },
+    [categories, dots, pushHistory]
+  );
+
   const clearAll = useCallback(() => {
     if (dots.length === 0) return;
     pushHistory([]);
@@ -256,9 +422,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   const updateCategoryLabel = useCallback(
     (id, label) => {
-      setCategories((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, label } : c))
-      );
+      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, label } : c)));
       markDirty();
     },
     [markDirty]
@@ -266,9 +430,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   const updateCategoryColor = useCallback(
     (id, color) => {
-      setCategories((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, color } : c))
-      );
+      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, color } : c)));
       markDirty();
     },
     [markDirty]
@@ -286,18 +448,19 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   const deleteCategory = useCallback(
     (id) => {
-      const hasDots = dots.some((d) => d.categoryId === id);
+      const synced = syncActiveIntoPlates();
+      const hasDots =
+        dots.some((d) => d.categoryId === id) ||
+        synced.some((p) => (p.dots || []).some((d) => d.categoryId === id));
       if (categories.length <= 1 || hasDots) return;
       setCategories((prev) => {
         const next = prev.filter((c) => c.id !== id);
-        if (activeCategory === id) {
-          setActiveCategory(next[0].id);
-        }
+        if (activeCategory === id) setActiveCategory(next[0].id);
         return next;
       });
       markDirty();
     },
-    [categories.length, dots, activeCategory, markDirty]
+    [categories.length, dots, activeCategory, markDirty, syncActiveIntoPlates]
   );
 
   const handleSetActiveCategory = useCallback(
@@ -364,46 +527,183 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     [markDirty]
   );
 
-  const loadImage = useCallback(async (file) => {
-    setLoadingImage(true);
-    setUploadError(null);
+  const updatePlateMeta = useCallback(
+    (partial) => {
+      setPlateMeta((prev) => ({ ...prev, ...partial }));
+      if (partial.sampleName != null && activePlateIdRef.current) {
+        const id = activePlateIdRef.current;
+        const name = partial.sampleName.trim() || 'Plate';
+        setPlates((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, name, sampleName: partial.sampleName } : p))
+        );
+      }
+      markDirty();
+    },
+    [markDirty]
+  );
 
-    try {
-      const result = await loadImageUniversal(file);
-      fullResCanvasRef.current = result.canvas;
+  const renamePlate = useCallback(
+    (plateId, name) => {
+      const trimmed = name.trim() || 'Plate';
+      setPlates((prev) =>
+        prev.map((p) =>
+          p.id === plateId ? { ...p, name: trimmed, sampleName: trimmed } : p
+        )
+      );
+      if (plateId === activePlateIdRef.current) {
+        setPlateMeta((prev) => ({ ...prev, sampleName: trimmed }));
+      }
+      markDirty();
+    },
+    [markDirty]
+  );
 
-      skipDirtyRef.current = true;
-      setImage({
+  const createPlateFromFile = useCallback(async (file) => {
+    const result = await loadImageUniversal(file);
+    const id = createPlateId();
+    const sampleName = file.name.replace(/\.[^/.]+$/, '');
+    const plate = buildPlateRecord({
+      id,
+      name: sampleName,
+      image: {
         src: result.displaySrc,
         naturalWidth: result.naturalWidth,
         naturalHeight: result.naturalHeight,
         displayWidth: result.displayWidth,
         displayHeight: result.displayHeight,
         name: result.name,
-      });
-      setDots([]);
-      setHistory([[]]);
-      setHistoryIndex(0);
-      setSessionName(file.name.replace(/\.[^/.]+$/, ''));
-      setIsDirty(true);
-      dirtySinceRef.current = Date.now();
-      requestAnimationFrame(() => {
-        skipDirtyRef.current = false;
-      });
-      trackRecentFile(file, 'colony-counter').catch(() => {});
-    } catch (err) {
-      fullResCanvasRef.current = null;
-      setUploadError(err.message || 'Failed to load image');
-    } finally {
-      setLoadingImage(false);
-    }
+      },
+      dots: [],
+      activeCategory: 'cat-1',
+      dotRadius: 12,
+      opacity: 0.7,
+      dilutionMode: 'preset',
+      dilutionExponent: 1,
+      customDilution: '',
+      volumeMl: 0.1,
+      meta: defaultPlateMeta({ sampleName }),
+      originalSrc: result.canvas ? result.canvas.toDataURL('image/png') : null,
+    });
+    // Keep canvas for the plate we activate last
+    return { plate, canvas: result.canvas, file };
   }, []);
 
-  useOpenFileListener('colony-counter', loadImage);
+  const activateLoadedPlate = useCallback((plate, canvas) => {
+    fullResCanvasRef.current = canvas;
+    originalSrcCacheRef.current = {
+      canvas,
+      dataUrl: plate.originalSrc,
+    };
+    setActivePlateId(plate.id);
+    activePlateIdRef.current = plate.id;
+    applyPlateToEditor(plate);
+  }, [applyPlateToEditor]);
+
+  const addPlatesFromFiles = useCallback(
+    async (files) => {
+      const list = [...(files ?? [])].filter(Boolean);
+      if (list.length === 0) return;
+
+      setLoadingImage(true);
+      setUploadError(null);
+      syncActiveIntoPlates();
+
+      try {
+        const created = [];
+        for (let i = 0; i < list.length; i += 1) {
+          setLoadingLabel(
+            list.length > 1 ? `Loading plate ${i + 1} of ${list.length}…` : 'Loading image…'
+          );
+          try {
+            const { plate, canvas, file } = await createPlateFromFile(list[i]);
+            created.push({ plate, canvas });
+            trackRecentFile(file, 'colony-counter').catch(() => {});
+            await new Promise((r) => setTimeout(r, 0));
+          } catch (err) {
+            setUploadError(`${list[i].name}: ${err.message || 'Failed to load image'}`);
+          }
+        }
+
+        if (created.length === 0) return;
+
+        const nextPlates = [...platesRef.current, ...created.map((c) => c.plate)];
+        platesRef.current = nextPlates;
+        setPlates(nextPlates);
+
+        if (!sessionName) {
+          setSessionName(created[0].plate.sampleName || 'colony-session');
+        }
+
+        const last = created[created.length - 1];
+        activateLoadedPlate(last.plate, last.canvas);
+        setIsDirty(true);
+        dirtySinceRef.current = Date.now();
+      } finally {
+        setLoadingImage(false);
+        setLoadingLabel('Loading image…');
+      }
+    },
+    [syncActiveIntoPlates, createPlateFromFile, activateLoadedPlate, sessionName]
+  );
+
+  /** First upload or replace-empty: same as add. */
+  const loadImage = useCallback(
+    async (file) => {
+      await addPlatesFromFiles([file]);
+    },
+    [addPlatesFromFiles]
+  );
+
+  useOpenFileListener('colony-counter', (file) => addPlatesFromFiles([file]));
 
   const dismissUploadError = useCallback(() => {
     setUploadError(null);
   }, []);
+
+  const removePlate = useCallback(
+    (plateId) => {
+      syncActiveIntoPlates();
+      const remaining = platesRef.current.filter((p) => p.id !== plateId);
+      if (remaining.length === platesRef.current.length) return;
+
+      platesRef.current = remaining;
+      setPlates(remaining);
+      markDirty();
+
+      if (remaining.length === 0) {
+        setActivePlateId(null);
+        activePlateIdRef.current = null;
+        setImage(null);
+        setDots([]);
+        setHistory([[]]);
+        setHistoryIndex(0);
+        fullResCanvasRef.current = null;
+        originalSrcCacheRef.current = { canvas: null, dataUrl: null };
+        setPlateMeta(defaultPlateMeta());
+        return;
+      }
+
+      if (plateId === activePlateIdRef.current) {
+        const next = remaining[remaining.length - 1];
+        setActivePlateId(next.id);
+        activePlateIdRef.current = next.id;
+        applyPlateToEditor(next);
+      }
+    },
+    [syncActiveIntoPlates, markDirty, applyPlateToEditor]
+  );
+
+  const goToPrevPlate = useCallback(() => {
+    const idx = platesRef.current.findIndex((p) => p.id === activePlateIdRef.current);
+    if (idx > 0) switchToPlate(platesRef.current[idx - 1].id);
+  }, [switchToPlate]);
+
+  const goToNextPlate = useCallback(() => {
+    const idx = platesRef.current.findIndex((p) => p.id === activePlateIdRef.current);
+    if (idx >= 0 && idx < platesRef.current.length - 1) {
+      switchToPlate(platesRef.current[idx + 1].id);
+    }
+  }, [switchToPlate]);
 
   const findDotAt = useCallback(
     (x, y) => {
@@ -445,7 +745,8 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
       });
 
       const link = document.createElement('a');
-      link.download = 'colony-count.png';
+      const base = plateMeta.sampleName || sessionName || 'colony-count';
+      link.download = `${base}.png`;
       link.href = offscreen.toDataURL('image/png');
       link.click();
     };
@@ -463,7 +764,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
       drawDots();
     };
     img.src = image.src;
-  }, [image, dots, opacity]);
+  }, [image, dots, opacity, plateMeta.sampleName, sessionName]);
 
   const completeSave = useCallback(() => {
     setLastSaved(new Date());
@@ -474,18 +775,20 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     setTimeout(() => setShowSavedFlash(false), 3000);
   }, []);
 
-  // Build a colony-counter session snapshot, embedding the full-res image.
   const buildColonySnapshot = useCallback(() => {
-    const session = getSessionSnapshot();
-    if (fullResCanvasRef.current) {
-      session.originalSrc = fullResCanvasRef.current.toDataURL('image/png');
-    }
-    return session;
-  }, [getSessionSnapshot]);
+    const synced = syncActiveIntoPlates();
+    const live = liveRef.current;
+    return buildBatchSessionObject({
+      sessionName: live.sessionName || 'colony-session',
+      activePlateId: activePlateIdRef.current,
+      categories: live.categories,
+      plates: synced,
+    });
+  }, [syncActiveIntoPlates]);
 
-  // Save the current colony work as a unified `.labtools` project (single tab).
   const saveSession = useCallback(async () => {
-    if (!image) return;
+    if (!image && platesRef.current.length === 0) return;
+    const state = buildColonySnapshot();
     const project = createEmptyProject({
       name: sessionName || 'colony-session',
       appVersion: APP_VERSION,
@@ -495,14 +798,16 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     project.workspace.activeTabId = tabId;
     project.tools[tabId] = {
       toolId: 'colony-counter',
-      stateVersion: 1,
-      state: buildColonySnapshot(),
+      stateVersion: 2,
+      state,
     };
-    const ok = await downloadText(JSON.stringify(project, null, 2), `${sessionName || 'colony-session'}.labtools`);
+    const ok = await downloadText(
+      JSON.stringify(project, null, 2),
+      `${sessionName || 'colony-session'}.benchy`
+    );
     if (ok) completeSave();
   }, [image, sessionName, buildColonySnapshot, completeSave]);
 
-  // Extract a colony session from any `.labtools` (or legacy `.colonycount`).
   const applyProjectOrSession = useCallback(
     (content) => {
       try {
@@ -523,7 +828,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
   );
 
   const openSession = useCallback(async () => {
-    const content = await pickTextFile(['.labtools']);
+    const content = await pickTextFile(['.benchy', '.labtools', '.colonycount']);
     if (content) applyProjectOrSession(content);
   }, [applyProjectOrSession]);
 
@@ -541,7 +846,19 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     [applyProjectOrSession]
   );
 
-  // Hydrate from a shell-restored `.labtools` project (runs once on mount).
+  const handleAddPlateFilesSelected = useCallback(
+    (e) => {
+      const files = [...(e.target.files ?? [])];
+      e.target.value = '';
+      if (files.length) addPlatesFromFiles(files);
+    },
+    [addPlatesFromFiles]
+  );
+
+  const openAddPlatePicker = useCallback(() => {
+    addPlateFileInputRef.current?.click();
+  }, []);
+
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current || !initialState) return;
@@ -554,10 +871,8 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
       setRemindSavePulse(false);
       return;
     }
-
     const elapsed = Date.now() - dirtySinceRef.current;
     const remaining = Math.max(0, 60000 - elapsed);
-
     const timer = setTimeout(() => setRemindSavePulse(true), remaining);
     return () => clearTimeout(timer);
   }, [isDirty]);
@@ -566,12 +881,12 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     if (!isActive) return;
 
     const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (isEditableTarget(e.target)) return;
 
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 's') {
           e.preventDefault();
-          if (image) saveSession();
+          if (image || plates.length > 0) saveSession();
           return;
         }
         if (e.key === 'o') {
@@ -587,11 +902,31 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
           e.preventDefault();
           redo();
         }
+        return;
+      }
+
+      if (plates.length < 2) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goToPrevPlate();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goToNextPlate();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, image, undo, redo, saveSession, openSession]);
+  }, [
+    isActive,
+    image,
+    plates.length,
+    undo,
+    redo,
+    saveSession,
+    openSession,
+    goToPrevPlate,
+    goToNextPlate,
+  ]);
 
   useEffect(() => {
     setInstanceDirty(instanceId, isDirty);
@@ -603,6 +938,22 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
+  const activePlateIndex = plates.findIndex((p) => p.id === activePlateId);
+
+  /** Plates list for UI — merge live active plate counts into strip. */
+  const platesForUi = useMemo(() => {
+    if (!activePlateId || !image) return plates;
+    return plates.map((p) =>
+      p.id === activePlateId
+        ? {
+            ...p,
+            name: plateMeta.sampleName || p.name,
+            dots,
+            imageData: image.src,
+          }
+        : p
+    );
+  }, [plates, activePlateId, image, dots, plateMeta.sampleName]);
 
   return {
     dots,
@@ -620,11 +971,16 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     setOpacity: handleSetOpacity,
     image,
     loadingImage,
+    loadingLabel,
     uploadError,
     dismissUploadError,
     loadImage,
+    addPlatesFromFiles,
     addDot,
     removeDot,
+    moveDot,
+    applyAutoColonies,
+    setDotColonyType,
     clearAll,
     findDotAt,
     undo,
@@ -649,8 +1005,23 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     openSession,
     handleSessionFileSelected,
     sessionFileInputRef,
+    addPlateFileInputRef,
+    handleAddPlateFilesSelected,
+    openAddPlatePicker,
     remindSavePulse,
     handleSessionNameChange,
     getSnapshot: buildColonySnapshot,
+    // Batch plates
+    plates: platesForUi,
+    activePlateId,
+    switchToPlate,
+    renamePlate,
+    removePlate,
+    goToPrevPlate,
+    goToNextPlate,
+    canPrevPlate: activePlateIndex > 0,
+    canNextPlate: activePlateIndex >= 0 && activePlateIndex < plates.length - 1,
+    plateMeta,
+    updatePlateMeta,
   };
 }

@@ -1,0 +1,31 @@
+---
+description: Benchy architecture — shell, tools, persistence, Electron
+alwaysApply: true
+---
+
+# Benchy — Architecture Rules
+
+## Do not break architecture without discussion
+
+- Keep the shell ↔ tool ↔ persistence model. Tools do not invent their own project file formats.
+- Do not add a backend/API layer without an explicit design decision documented in `docs/design-decisions.md`.
+
+## Follow established patterns
+
+- Register tools in `toolRegistry.js`, `sidebarNav.js`, and `toolManifest.js`.
+- Persist via `useToolSnapshot(instanceId, toolId, getSnapshot)` and shell autosave.
+- Use `storageBackend` for KV/blobs — never hard-code only IndexedDB or only Electron store.
+- Shared UI: `ToolHeader`, `LtTabs`, `ToolActionBar` from `src/shared/ui/`.
+
+## Naming trap
+
+- Tool id `qpcr-analyzer` → component from **`src/apps/qpcr-insight/`**.
+- Do not recreate `src/apps/qpcr-analyzer/`.
+
+## Explain architectural changes
+
+When changing shell session lifecycle, `.benchy` schema, Electron IPC, or tool registration, update `docs/architecture.md` (and `docs/PERSISTENCE.md` / `docs/database-schema.md` if storage/formulas are involved).
+
+## Electron security
+
+Keep `contextIsolation: true` and `nodeIntegration: false`. Extend IPC only through `preload.cjs`.

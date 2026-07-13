@@ -126,6 +126,7 @@ export default function QPCRInsightApp({ instanceId, initialState = null }) {
   if (!experiment) {
     return (
       <div className="qpcr-insight qpcr-insight--upload">
+        <ToolHeader title="qPCR Analysis" subtitle="Import a QuantStudio file to begin" />
         <UploadZone
           loading={loading}
           error={error}

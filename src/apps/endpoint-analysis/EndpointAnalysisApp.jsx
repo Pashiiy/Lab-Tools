@@ -14,6 +14,7 @@ import ToolActionBar from '../../shared/ui/ToolActionBar';
 import './App.css';
 import '../../shared/image/image-import.css';
 
+
 const EA_TABS = [
   { id: 'score-gels', label: 'Score Gels' },
   { id: 'overview', label: 'Overview' },
@@ -41,12 +42,17 @@ export default function EndpointAnalysisApp({ instanceId, initialState = null })
     activeTab,
     setActiveTab,
     getSnapshot,
+    exportCsv,
   } = useEndpointAnalysis(instanceId, initialState);
 
-  useToolSnapshot(instanceId, 'endpoint-analysis', () => {
-    const snap = getSnapshot();
-    return validateSession(snap) ? snap : undefined;
-  });
+  useToolSnapshot(
+    instanceId,
+    'endpoint-analysis',
+    useCallback(() => {
+      const snap = getSnapshot();
+      return validateSession(snap) ? snap : undefined;
+    }, [getSnapshot])
+  );
 
   const handleExportExcel = useCallback(async () => {
     await exportToExcel({
@@ -115,6 +121,14 @@ export default function EndpointAnalysisApp({ instanceId, initialState = null })
           onClick={handleExportExcel}
         >
           Export Excel
+        </button>
+        <button
+          type="button"
+          className="lt-btn"
+          onClick={exportCsv}
+          title="Export scored colony table as CSV"
+        >
+          Export CSV
         </button>
       </ToolActionBar>
 

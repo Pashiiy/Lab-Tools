@@ -7,6 +7,8 @@ import { useToolHelp } from '../help/ToolHelpContext';
 import { hasHelpContent } from '../help/helpRegistry';
 import { TOOL_LIST } from './toolRegistry';
 import { getActiveTools } from './toolManifest';
+import { APP_NAME } from '../shared/brand';
+import { BENCHY_EXTENSION } from '../shared/persistence/labtoolsSchema';
 
 export default function TopBar({
   theme,
@@ -65,7 +67,7 @@ export default function TopBar({
         {isHome ? (
           <div className="shell-topbar__brand">
             <span className="shell-topbar__brand-mark" aria-hidden />
-            <span className="shell-topbar__brand-name">Lab Tools</span>
+            <span className="shell-topbar__brand-name">{APP_NAME}</span>
           </div>
         ) : (
           <>
@@ -146,25 +148,25 @@ export default function TopBar({
                 const name = window.prompt('Save project as', 'My Project');
                 if (name && name.trim()) onSaveProject?.(name.trim());
               }}
-              title="Save the current workspace as a named project"
+              title="Save the current workspace as a named project (separate from tool session export)"
             >
-              Save
+              Save Project
             </button>
             <button
               type="button"
               className="shell-topbar__project-btn"
               onClick={() => onImportProject?.()}
-              title="Import a .labtools project file"
+              title={`Import a .${BENCHY_EXTENSION} project file`}
             >
-              Import
+              Import Project
             </button>
             <button
               type="button"
               className="shell-topbar__project-btn shell-topbar__project-btn--primary"
               onClick={() => onExportProject?.()}
-              title="Export the workspace to a .labtools file"
+              title={`Download the workspace as a .${BENCHY_EXTENSION} file`}
             >
-              Export
+              Export Project
             </button>
           </div>
         )}

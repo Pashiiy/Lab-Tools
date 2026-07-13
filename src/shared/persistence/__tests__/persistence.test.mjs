@@ -1,10 +1,9 @@
 /**
  * Persistence foundation tests (no framework): `npm run test:persistence`.
  *
- * Covers the unified `.labtools` schema, legacy `.colonycount` migration, the
- * tool-state registry round-trip, recent-files/projects logic, and the full
- * projectStore save/load/recover flow against an in-memory backend (the same
- * interface the IndexedDB and Electron backends implement).
+ * Covers the unified `.benchy` schema, legacy `.labtools` / `.colonycount`
+ * migration, the tool-state registry round-trip, recent-files/projects logic,
+ * and the full projectStore save/load/recover flow against an in-memory backend.
  */
 import {
   createEmptyProject,
@@ -15,6 +14,9 @@ import {
   serializeProject,
   deserializeProject,
   touchProject,
+  BENCHY_FORMAT,
+  LEGACY_LABTOOLS_FORMAT,
+  migrateProject,
 } from '../labtoolsSchema.js';
 import {
   registerToolPersistence,
@@ -52,9 +54,20 @@ async function run() {
     const p = createEmptyProject({ name: 'My Run', appVersion: '1.2.3' });
     assert('createEmptyProject is a valid project', validateProject(p).valid);
     assert('is recognized as labtools', isLabtoolsProject(p));
+    assert('uses benchy-project format', p.format === BENCHY_FORMAT);
     assert('round-trips through serialize/deserialize', (() => {
       const back = deserializeProject(serializeProject(p));
       return back.metadata.id === p.metadata.id && back.metadata.name === 'My Run';
+    })());
+    assert('migrates legacy labtools-project format', (() => {
+      const legacy = { ...p, format: LEGACY_LABTOOLS_FORMAT };
+      const migrated = migrateProject(legacy);
+      return migrated.format === BENCHY_FORMAT && isLabtoolsProject(legacy);
+    })());
+    assert('deserializes legacy labtools-project files', (() => {
+      const legacy = { ...createEmptyProject({ name: 'Old' }), format: LEGACY_LABTOOLS_FORMAT };
+      const back = deserializeProject(JSON.stringify(legacy));
+      return back.format === BENCHY_FORMAT && back.metadata.name === 'Old';
     })());
     assert('invalid object fails validation', !validateProject({ foo: 1 }).valid);
     assert('touchProject updates lastModifiedAt', (() => {
@@ -158,11 +171,42 @@ async function run() {
     assert('project deleted', (await store.loadProject(proj.metadata.id)) === null);
     assert('recents updated after delete', !(await store.listRecentProjects()).some((r) => r.projectId === proj.metadata.id));
 
-    // Recent files via store.
-    await store.recordRecentFile({ name: 'gel.tif', type: 'tiff', toolId: 'gel-quantification' });
+    // Recent files via store + blob GC.
+    await store.storeFileBlob('blob-a', { tag: 'a' });
+    await store.recordRecentFile({
+      name: 'gel.tif',
+      type: 'tiff',
+      toolId: 'gel-quantification',
+      fileId: 'blob-a',
+    });
     assert('recordRecentFile persists', (await store.listRecentFiles()).length === 1);
+    assert('recent blob retained', (await store.getFileBlob('blob-a'))?.tag === 'a');
+
+    await store.storeFileBlob('blob-b', { tag: 'b' });
+    await store.recordRecentFile({
+      name: 'gel.tif',
+      type: 'tiff',
+      toolId: 'gel-quantification',
+      fileId: 'blob-b',
+    });
+    assert('dedupe replaces recent entry', (await store.listRecentFiles())[0].fileId === 'blob-b');
+    assert('superseded recent blob deleted', (await store.getFileBlob('blob-a')) === null);
+    assert('new recent blob retained', (await store.getFileBlob('blob-b'))?.tag === 'b');
+
+    await store.removeRecentFile((await store.listRecentFiles())[0].id);
+    assert('removeRecentFile empties list', (await store.listRecentFiles()).length === 0);
+    assert('removed recent blob deleted', (await store.getFileBlob('blob-b')) === null);
+
+    await store.storeFileBlob('blob-c', { tag: 'c' });
+    await store.recordRecentFile({
+      name: 'other.tif',
+      type: 'tiff',
+      toolId: 'gel-quantification',
+      fileId: 'blob-c',
+    });
     await store.clearRecentFiles();
     assert('clearRecentFiles empties list', (await store.listRecentFiles()).length === 0);
+    assert('clearRecentFiles deletes blobs', (await store.getFileBlob('blob-c')) === null);
 
     // Blob store.
     await store.storeFileBlob('file-1', { bytes: 42 });

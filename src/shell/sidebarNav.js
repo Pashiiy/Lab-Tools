@@ -6,6 +6,7 @@ export const SIDEBAR_TOOLS = [
   { id: 'gel-quantification', label: 'Gel Analysis', icon: 'gel' },
   { id: 'endpoint-analysis', label: 'Endpoint Analysis', icon: 'endpoint' },
   { id: 'colony-counter', label: 'Colony Counter', icon: 'colony' },
+  { id: 'figure-studio', label: 'Figure Studio', icon: 'figure' },
 ];
 
 export function getAllToolIds() {

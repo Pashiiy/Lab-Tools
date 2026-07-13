@@ -5,6 +5,7 @@ import {
   getCachedDisplay,
   setCachedDisplay,
 } from '../utils/gelImageCache';
+import { isEditableTarget } from '../../../shared/input/isEditableTarget';
 import RoiOverlay from './RoiOverlay';
 
 const MIN_SCALE = 0.25;
@@ -22,14 +23,19 @@ export default function ImageViewer({
   activeRoiId,
   onRoiClick,
   onSelectRoi,
+  isActive = true,
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [transform, setTransform] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState(null);
   const [spaceDown, setSpaceDown] = useState(false);
   const pointerDownRef = useRef(null);
+  const isPanningRef = useRef(false);
+  const spaceDownRef = useRef(false);
+  const panStartRef = useRef(null);
+  const panPointerIdRef = useRef(null);
+  const didPanRef = useRef(false);
 
   const fitToWindow = useCallback(() => {
     const container = containerRef.current;
@@ -52,56 +58,94 @@ export default function ImageViewer({
     if (!canvasRef.current || !raw) return undefined;
 
     let cancelled = false;
-    const frame = requestAnimationFrame(() => {
-      if (cancelled) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    let frame = 0;
+    // Debounce brightness/contrast slider ticks so we don't full-res re-render every pointer move.
+    const timer = setTimeout(() => {
+      frame = requestAnimationFrame(() => {
+        if (cancelled) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-      const cacheKey = gelId ? displayCacheKey(gelId, displayAdjustments) : null;
-      const cached = cacheKey ? getCachedDisplay(cacheKey) : null;
+        const cacheKey = gelId ? displayCacheKey(gelId, displayAdjustments) : null;
+        const cached = cacheKey ? getCachedDisplay(cacheKey) : null;
 
-      if (cached) {
-        if (canvas.width !== cached.width) canvas.width = cached.width;
-        if (canvas.height !== cached.height) canvas.height = cached.height;
-        const ctx = canvas.getContext('2d', { alpha: false });
-        ctx?.putImageData(cached.imageData, 0, 0);
-        return;
-      }
-
-      renderGelToCanvas(raw, canvas, displayAdjustments);
-
-      if (cacheKey) {
-        const ctx = canvas.getContext('2d', { alpha: false });
-        if (ctx) {
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          setCachedDisplay(cacheKey, canvas.width, canvas.height, imageData);
+        if (cached) {
+          if (canvas.width !== cached.width) canvas.width = cached.width;
+          if (canvas.height !== cached.height) canvas.height = cached.height;
+          const ctx = canvas.getContext('2d', { alpha: false });
+          ctx?.putImageData(cached.imageData, 0, 0);
+          return;
         }
-      }
-    });
+
+        renderGelToCanvas(raw, canvas, displayAdjustments);
+
+        if (cacheKey) {
+          const ctx = canvas.getContext('2d', { alpha: false });
+          if (ctx) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            setCachedDisplay(cacheKey, canvas.width, canvas.height, imageData);
+          }
+        }
+      });
+    }, 80);
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      if (frame) cancelAnimationFrame(frame);
     };
   }, [gelId, raw, displayAdjustments]);
 
   useEffect(() => {
+    if (!isActive) {
+      spaceDownRef.current = false;
+      setSpaceDown(false);
+      isPanningRef.current = false;
+      setIsPanning(false);
+      panStartRef.current = null;
+      panPointerIdRef.current = null;
+      return undefined;
+    }
+
+    const clearTransient = () => {
+      spaceDownRef.current = false;
+      setSpaceDown(false);
+      isPanningRef.current = false;
+      setIsPanning(false);
+      panStartRef.current = null;
+      panPointerIdRef.current = null;
+    };
+
     const onKeyDown = (e) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        setSpaceDown(true);
-      }
+      if (e.code !== 'Space') return;
+      if (e.repeat) return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      spaceDownRef.current = true;
+      setSpaceDown(true);
     };
     const onKeyUp = (e) => {
-      if (e.code === 'Space') setSpaceDown(false);
+      if (e.code !== 'Space') return;
+      spaceDownRef.current = false;
+      setSpaceDown(false);
     };
+    const onBlur = () => clearTransient();
+    const onVisibility = () => {
+      if (document.hidden) clearTransient();
+    };
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearTransient();
     };
-  }, []);
+  }, [isActive]);
 
   const screenToImage = useCallback(
     (clientX, clientY) => {
@@ -138,35 +182,81 @@ export default function ImageViewer({
     [zoomAt]
   );
 
+  const endPan = useCallback(() => {
+    if (!isPanningRef.current) return;
+    isPanningRef.current = false;
+    setIsPanning(false);
+    panStartRef.current = null;
+    panPointerIdRef.current = null;
+  }, []);
+
   const handlePointerDown = (e) => {
     if (!raw) return;
     pointerDownRef.current = { x: e.clientX, y: e.clientY, imagePt: screenToImage(e.clientX, e.clientY) };
 
-    if (spaceDown || e.button === 1) {
+    if (spaceDownRef.current || e.button === 1) {
+      e.preventDefault();
+      didPanRef.current = false;
+      isPanningRef.current = true;
       setIsPanning(true);
-      setPanStart({
+      panPointerIdRef.current = e.pointerId;
+      panStartRef.current = {
         x: e.clientX,
         y: e.clientY,
         offsetX: transform.offsetX,
         offsetY: transform.offsetY,
-      });
+      };
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
     }
   };
 
   const handlePointerMove = (e) => {
-    if (isPanning && panStart) {
+    if (isPanningRef.current && panStartRef.current) {
+      if (
+        panPointerIdRef.current != null &&
+        e.pointerId !== panPointerIdRef.current
+      ) {
+        return;
+      }
+      didPanRef.current = true;
+      const start = panStartRef.current;
       setTransform((prev) => ({
         ...prev,
-        offsetX: panStart.offsetX + (e.clientX - panStart.x),
-        offsetY: panStart.offsetY + (e.clientY - panStart.y),
+        offsetX: start.offsetX + (e.clientX - start.x),
+        offsetY: start.offsetY + (e.clientY - start.y),
       }));
     }
   };
 
   const handlePointerUp = (e) => {
-    if (isPanning) {
-      setIsPanning(false);
-      setPanStart(null);
+    if (
+      panPointerIdRef.current != null &&
+      e.pointerId !== panPointerIdRef.current &&
+      isPanningRef.current
+    ) {
+      return;
+    }
+
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (isPanningRef.current) {
+      endPan();
+      pointerDownRef.current = null;
+      return;
+    }
+
+    if (didPanRef.current) {
+      didPanRef.current = false;
       pointerDownRef.current = null;
       return;
     }
@@ -216,7 +306,7 @@ export default function ImageViewer({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       style={{ cursor: spaceDown || isPanning ? 'grab' : 'crosshair' }}
     >
       <div

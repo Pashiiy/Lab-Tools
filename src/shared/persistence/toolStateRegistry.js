@@ -3,7 +3,7 @@
  *
  * Each tool registers how to serialize its live state into a plain
  * JSON-safe object and how to restore it. This is the single extension point
- * that lets the unified `.labtools` container capture any tool — including
+ * that lets the unified `.benchy` container capture any tool — including
  * future ones — without changing the schema.
  *
  * A handler:

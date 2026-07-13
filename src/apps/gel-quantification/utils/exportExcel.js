@@ -35,7 +35,7 @@ export async function exportGelQuantExcel({
   description = '',
 }) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Lab Tools — Gel Quantification';
+  workbook.creator = 'Benchy — Gel Quantification';
   workbook.created = new Date();
 
   const allPairs = gelResults.flatMap((g) =>

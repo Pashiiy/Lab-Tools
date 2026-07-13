@@ -1,7 +1,7 @@
 /**
  * High-level project persistence API used by the shell and tool hooks.
  *
- * Wraps the platform storage backend with the `.labtools` schema and the
+ * Wraps the platform storage backend with the `.benchy` schema and the
  * recent-files / recent-projects logic. This is the ONLY module the UI layer
  * needs to import for save / load / autosave / recovery / recents.
  *
@@ -86,7 +86,7 @@ export async function deleteProject(projectId) {
 
 /* ------------------------------ Import / export ---------------------------- */
 
-/** Parse imported `.labtools` (or legacy `.colonycount`) text into a project. */
+/** Parse imported `.benchy` (or legacy `.colonycount`) text into a project. */
 export function importProjectFromText(text, opts = {}) {
   return deserializeProject(text, opts);
 }
@@ -116,20 +116,42 @@ export async function listRecentFiles() {
 
 export async function recordRecentFile(entry) {
   const backend = getStorageBackend();
-  const updated = addRecentFile(await listRecentFiles(), entry);
+  const existing = await listRecentFiles();
+  const updated = addRecentFile(existing, entry);
   await backend.set(KEY_RECENT_FILES, updated);
+
+  // Drop superseded / limit-evicted blobs so IndexedDB does not accumulate orphans.
+  const kept = new Set(updated.map((e) => e.fileId).filter(Boolean));
+  const orphaned = existing
+    .map((e) => e.fileId)
+    .filter((fileId) => fileId && !kept.has(fileId));
+  if (orphaned.length > 0) {
+    await Promise.all(orphaned.map((fileId) => backend.deleteBlob(fileId).catch(() => {})));
+  }
   return updated;
 }
 
 export async function removeRecentFile(id) {
   const backend = getStorageBackend();
-  const updated = removeRecent(await listRecentFiles(), id);
+  const existing = await listRecentFiles();
+  const entry = existing.find((e) => e.id === id);
+  const updated = removeRecent(existing, id);
   await backend.set(KEY_RECENT_FILES, updated);
+  if (entry?.fileId) {
+    await backend.deleteBlob(entry.fileId).catch(() => {});
+  }
   return updated;
 }
 
 export async function clearRecentFiles() {
-  await getStorageBackend().set(KEY_RECENT_FILES, clearRecent());
+  const backend = getStorageBackend();
+  const existing = await listRecentFiles();
+  await backend.set(KEY_RECENT_FILES, clearRecent());
+  await Promise.all(
+    existing
+      .filter((e) => e.fileId)
+      .map((e) => backend.deleteBlob(e.fileId).catch(() => {}))
+  );
   return [];
 }
 

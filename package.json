@@ -1,8 +1,8 @@
 {
-  "name": "lab-tools",
+  "name": "benchy",
   "private": true,
   "version": "1.1.13",
-  "description": "Lab Tools — endpoint analysis, colony counting, gel quantification, and qPCR analysis for microbiology labs",
+  "description": "Benchy — Scientific Image Analysis & Research Workspace",
   "author": "Bloom Lab",
   "type": "module",
   "main": "electron/main.cjs",
@@ -22,7 +22,9 @@
     "lint": "eslint .",
     "test:gel": "node src/apps/gel-quantification/engine/__tests__/fijiValidation.test.mjs",
     "test:persistence": "node src/shared/persistence/__tests__/persistence.test.mjs",
-    "test": "npm run test:gel && npm run test:persistence",
+    "test:colony": "node src/apps/colony-counter/utils/__tests__/session.test.mjs",
+    "test": "npm run test:gel && npm run test:persistence && npm run test:colony",
+    "colony-api": "cd backend/colony_counter && .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8765",
     "preview": "vite preview",
     "generate-icons": "node scripts/generate-icons.mjs",
     "predist": "npm run generate-icons",
@@ -75,8 +77,8 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.labtools.app",
-    "productName": "Lab Tools",
+    "appId": "com.benchy.app",
+    "productName": "Benchy",
     "asar": true,
     "directories": {
       "output": "release",
@@ -86,6 +88,19 @@
       "dist/**/*",
       "!dist/**/*.map",
       "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/colony_counter",
+        "to": "colony_counter",
+        "filter": [
+          "**/*",
+          "!.venv",
+          "!.venv/**",
+          "!**/__pycache__",
+          "!**/__pycache__/**"
+        ]
+      }
     ],
     "publish": {
       "provider": "github",

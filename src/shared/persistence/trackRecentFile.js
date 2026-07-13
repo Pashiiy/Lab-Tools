@@ -14,7 +14,7 @@ function inferFileType(file) {
   if (n.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   if (n.endsWith('.xls')) return 'application/vnd.ms-excel';
   if (n.endsWith('.eds')) return 'application/octet-stream';
-  if (n.endsWith('.labtools')) return 'application/json';
+  if (n.endsWith('.benchy') || n.endsWith('.labtools')) return 'application/json';
   return 'application/octet-stream';
 }
 
@@ -51,7 +51,7 @@ export async function reopenRecentFileEntry(entry, { getFileBlob, openTool }) {
   const file = new File([blob], entry.name, { type: entry.type || blob.type || '' });
   if (entry.toolId && openTool) openTool(entry.toolId);
   window.dispatchEvent(
-    new CustomEvent('labtools:open-file', { detail: { toolId: entry.toolId, file } })
+    new CustomEvent('benchy:open-file', { detail: { toolId: entry.toolId, file } })
   );
   return file;
 }

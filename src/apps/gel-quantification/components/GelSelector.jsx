@@ -37,7 +37,7 @@ export default function GelSelector({
       <div className="gq-gel-selector__nav">
         <button
           type="button"
-          className="gq-btn gq-gel-selector__arrow"
+          className="lt-btn gq-gel-selector__arrow"
           onClick={onPrev}
           disabled={!canPrev}
           aria-label="Previous gel"
@@ -50,7 +50,7 @@ export default function GelSelector({
         </span>
         <button
           type="button"
-          className="gq-btn gq-gel-selector__arrow"
+          className="lt-btn gq-gel-selector__arrow"
           onClick={onNext}
           disabled={!canNext}
           aria-label="Next gel"

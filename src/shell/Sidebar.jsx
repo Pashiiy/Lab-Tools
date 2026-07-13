@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { APP_NAME } from '../shared/brand';
 import { SIDEBAR_TOOLS } from './sidebarNav';
 import { ToolIcon } from './ToolIcons';
 import { TOOLS } from './toolRegistry';
@@ -48,7 +49,7 @@ export default function Sidebar({
       <button type="button" className="shell-sidebar__brand" onClick={onGoHome}>
         <span className="shell-sidebar__brand-mark" aria-hidden />
         <div className="shell-sidebar__brand-text">
-          <span className="shell-sidebar__brand-name">Lab Tools</span>
+          <span className="shell-sidebar__brand-name">{APP_NAME}</span>
           <span className="shell-sidebar__brand-sub">Bloom Lab</span>
         </div>
       </button>

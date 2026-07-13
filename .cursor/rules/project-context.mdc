@@ -1,0 +1,37 @@
+---
+description: Benchy product context — purpose, tools, constraints, stack
+alwaysApply: true
+---
+
+# Benchy — Project Context
+
+**Benchy** is a **local-first** scientific image analysis and research workspace for the Bloom Lab (Electron desktop + Vercel web/PWA). **No backend, no auth, no SQL database.**
+
+## Active tools
+
+| Tool ID | Folder | Role |
+|---------|--------|------|
+| `qpcr-analyzer` | `src/apps/qpcr-insight/` | QuantStudio qPCR / ΔΔCt |
+| `gel-quantification` | `src/apps/gel-quantification/` | Fiji-parity gel ROI |
+| `endpoint-analysis` | `src/apps/endpoint-analysis/` | Repair endpoint scoring |
+| `colony-counter` | `src/apps/colony-counter/` | Colony marking + batch plates + CFU |
+
+## Critical technologies
+
+- React 19 + Vite 8 (JSX, not TypeScript)
+- Electron 42 + electron-builder
+- Persistence: `.benchy` (+ legacy `.labtools` import) / IndexedDB / Electron KV (`docs/PERSISTENCE.md`)
+- ExcelJS, SheetJS, Recharts, geotiff/UTIF
+
+## Constraints
+
+- Dual target: Electron **and** Vercel static web — keep storage platform-aware.
+- Treat `docs/` as source of truth; update docs when architecture or roadmap changes.
+- Never invent a server API, Prisma, or cloud DB unless product direction changes.
+- Protect scientific formulas (gel, ΔΔCt, endpoint categories, CFU) — see `docs/database-schema.md`.
+- Branding identity lives in `src/shared/brand.js` (`APP_NAME`, tagline).
+
+## Removed / do not revive casually
+
+- Legacy `src/apps/qpcr-analyzer/` — deleted; live qPCR is **qpcr-insight**.
+- Figure Generator — deleted; rebuild later as a new tool from scratch.

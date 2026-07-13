@@ -31,3 +31,8 @@ public/icon-*.png
 *.sln
 *.sw?
 Untitled
+
+# Python colony auto-count service
+backend/colony_counter/.venv/
+__pycache__/
+*.pyc

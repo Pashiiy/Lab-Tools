@@ -9,11 +9,42 @@ const COLOR_PALETTE = [
   '#EF4444',
 ];
 
-let nextCatNum = 2;
+let nextCatNum = 4;
 
 export const DEFAULT_CATEGORIES = [
-  { id: 'cat-1', label: 'Colony Type A', color: '#FF3B3B' },
+  { id: 'cat-1', label: 'Yeast', color: '#E8E8E8' },
+  { id: 'cat-2', label: 'Contaminant', color: '#E11D48' },
+  { id: 'cat-3', label: 'Uncertain', color: '#F59E0B' },
 ];
+
+/** Map auto colonyType → category id/color helpers */
+export const COLONY_TYPE_META = {
+  yeast: { label: 'Yeast', color: '#E8E8E8', stroke: 'rgba(240,240,245,0.95)' },
+  contaminant: { label: 'Contaminant', color: '#E11D48', stroke: 'rgba(244,63,94,0.95)' },
+  uncertain: { label: 'Uncertain', color: '#F59E0B', stroke: 'rgba(245,158,11,0.95)', dashed: true },
+};
+
+export function ensureTypeCategories(categories) {
+  const next = [...categories];
+  const byLabel = new Map(next.map((c) => [c.label.toLowerCase(), c]));
+  for (const [type, meta] of Object.entries(COLONY_TYPE_META)) {
+    void type;
+    if (!byLabel.has(meta.label.toLowerCase())) {
+      const cat = createCategory(next);
+      cat.label = meta.label;
+      cat.color = meta.color;
+      next.push(cat);
+      byLabel.set(meta.label.toLowerCase(), cat);
+    }
+  }
+  return next;
+}
+
+export function categoryForColonyType(categories, colonyType) {
+  const meta = COLONY_TYPE_META[colonyType] || COLONY_TYPE_META.yeast;
+  const hit = categories.find((c) => c.label.toLowerCase() === meta.label.toLowerCase());
+  return hit || categories[0] || null;
+}
 
 export function pickDistinctColor(existingCategories) {
   const used = new Set(existingCategories.map((c) => c.color));

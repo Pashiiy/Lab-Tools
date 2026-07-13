@@ -38,6 +38,11 @@
   font-size: 0.75rem;
 }
 
+.image-import-state__detail {
+  font-size: 0.6875rem;
+  color: var(--lt-text-muted, var(--text-muted));
+}
+
 .image-import-state__error {
   margin: 0;
   font-size: 0.6875rem;

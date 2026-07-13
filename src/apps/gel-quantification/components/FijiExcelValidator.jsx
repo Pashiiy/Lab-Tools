@@ -158,7 +158,7 @@ export default function FijiExcelValidator() {
             transcription of your spreadsheet formulas. Differences should be 0.
           </p>
         </div>
-        <button type="button" className="gq-btn" onClick={loadExample}>
+        <button type="button" className="lt-btn" onClick={loadExample}>
           Load example
         </button>
       </div>

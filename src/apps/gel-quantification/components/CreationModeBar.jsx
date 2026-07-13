@@ -12,14 +12,14 @@ export default function CreationModeBar({
       <div className="gq-creation-bar__modes">
         <button
           type="button"
-          className={`gq-btn gq-btn--small${creationMode === CREATION_MODES.TARGET ? ' gq-btn--active gq-btn--target' : ''}`}
+          className={`lt-btn lt-btn--small${creationMode === CREATION_MODES.TARGET ? ' lt-btn--active gq-mode--target' : ''}`}
           onClick={() => onModeChange(CREATION_MODES.TARGET)}
         >
           Target
         </button>
         <button
           type="button"
-          className={`gq-btn gq-btn--small${creationMode === CREATION_MODES.CONTROL ? ' gq-btn--active gq-btn--control' : ''}`}
+          className={`lt-btn lt-btn--small${creationMode === CREATION_MODES.CONTROL ? ' lt-btn--active gq-mode--control' : ''}`}
           onClick={() => onModeChange(CREATION_MODES.CONTROL)}
         >
           Control

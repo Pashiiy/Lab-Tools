@@ -47,7 +47,7 @@ export function useExperiment(initialState = null) {
 
   useOpenFileListener('qpcr-analyzer', loadFile);
 
-  // Hydrate from a shell-restored `.labtools` project (once on mount).
+  // Hydrate from a shell-restored `.benchy` project (once on mount).
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current || !initialState?.experiment) return;

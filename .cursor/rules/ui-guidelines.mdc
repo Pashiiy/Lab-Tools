@@ -1,0 +1,33 @@
+---
+description: Benchy UI guidelines — tokens, shared components, density
+alwaysApply: true
+---
+
+# Benchy — UI Guidelines
+
+Full reference: `docs/DESIGN_SYSTEM.md`. Homepage (`src/shell/home.css`) is the visual north star.
+
+## Consistency
+
+- Maintain the existing design language (`--lt-*` tokens in `src/shared/theme.css`).
+- Reuse `ToolHeader`, `LtTabs`, `ToolActionBar`, `lt-btn`, `lt-input` — do not invent new button/tab/header systems.
+- Preserve existing UX patterns: workspace Save/Import/Export in shell top bar; tool exports in `ToolActionBar`.
+
+## Layout density
+
+- Tool header ~40px; tabs single row; action bar single row.
+- Sidebars are for tool configuration only — not global project navigation.
+- Primary data (gels, charts, images) gets remaining flex space.
+
+## Tool CSS
+
+- Scope styles under a root class (e.g. `.qpcr-insight`, `.gq-*`).
+- Avoid global `.btn` / unscoped leaks.
+- Respect `prefers-reduced-motion`.
+
+## Adding UI for a new tool
+
+1. `.app` flex column inside the shell tab panel
+2. `ToolHeader` + optional `LtTabs` + `ToolActionBar`
+3. Register in shell manifests
+4. Wire persistence snapshot

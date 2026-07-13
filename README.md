@@ -1,16 +1,42 @@
-# React + Vite
+# Benchy
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Scientific Image Analysis & Research Workspace for the Bloom Lab — endpoint scoring, colony CFU, Fiji-parity gel quantification, and QuantStudio qPCR — as an Electron desktop app and a Vercel-hosted web/PWA.
 
-Currently, two official plugins are available:
+## Quick start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev            # web (Vite)
+npm run electron:dev   # desktop
+npm test               # gel + persistence tests
+```
 
-## React Compiler
+Requirements: Node `>=22.9.0`, npm `>=11`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Documentation
 
-## Expanding the ESLint configuration
+| Doc | Purpose |
+|-----|---------|
+| [docs/project-overview.md](docs/project-overview.md) | What the app is, users, features |
+| [docs/architecture.md](docs/architecture.md) | Shell, tools, Electron, data flow |
+| [docs/development-guide.md](docs/development-guide.md) | Run, build, test, release, Vercel |
+| [docs/database-schema.md](docs/database-schema.md) | Storage schema + protected formulas |
+| [docs/design-decisions.md](docs/design-decisions.md) | Why key choices were made |
+| [docs/roadmap.md](docs/roadmap.md) | Priorities and planned work |
+| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | UI tokens and components |
+| [docs/PERSISTENCE.md](docs/PERSISTENCE.md) | `.benchy` and autosave |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Active tools
+
+- **qPCR Analysis** — `src/apps/qpcr-insight/` (tool id `qpcr-analyzer`)
+- **Gel Analysis** — `src/apps/gel-quantification/`
+- **Endpoint Analysis** — `src/apps/endpoint-analysis/`
+- **Colony Counter** — `src/apps/colony-counter/`
+
+## Important
+
+Do not change Fiji gel formulas, ΔΔCt math, endpoint category tables, or CFU calculations without explicit approval and tests. See [docs/database-schema.md](docs/database-schema.md).
+
+## License / repo
+
+See repository metadata in `package.json`.

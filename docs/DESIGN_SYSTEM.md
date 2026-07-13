@@ -1,4 +1,4 @@
-# Lab Tools — Design System & UI Architecture
+# Benchy — Design System & UI Architecture
 
 This document captures the Phase 1 audit, proposed architecture, and implementation reference for the unified Lab Tools platform. The homepage (`src/shell/home.css`) is the visual north star — professional laboratory software, not a marketing site.
 
@@ -77,7 +77,7 @@ This document captures the Phase 1 audit, proposed architecture, and implementat
 └─────────────────┴───────────────────────────────────────────┘
 ```
 
-**Workspace-level actions** (Save / Import / Export `.labtools`) → shell `TopBar` top-right  
+**Workspace-level actions** (Save / Import / Export `.benchy`) → shell `TopBar` top-right  
 **Tool-level actions** (Excel, CSV, images, PDF) → `ToolActionBar` below tabs in every tool
 
 **Global controls** → Settings + theme toggle + notepad/strain utilities in top-right
@@ -88,11 +88,10 @@ This document captures the Phase 1 audit, proposed architecture, and implementat
 
 | Tool | ToolHeader | LtTabs | ToolActionBar | Notes |
 |------|------------|--------|---------------|-------|
-| Gel Quantification | ✓ | ✓ | ✓ | Reference implementation |
-| Colony Counter | ✓ | — | ✓ | Session name inline in header |
-| Endpoint Analyzer | ✓ | ✓ | ✓ | Strain/colony in header actions |
-| qPCR Insight | ✓ | ✓ | ✓ | Internal sidebar removed |
-| Figure Generator | ✓ | — | ✓ | Config sidebar retained (tool-specific) |
+| Gel Quantification | ✓ | ✓ | ✓ (always; exports disabled until pairs) | Uses `lt-btn`; Fiji mode colors via `gq-mode--*` |
+| Colony Counter | ✓ | — | ✓ (always; actions disabled until image) | Uses `lt-btn`; scoped under `.colony-counter` |
+| Endpoint Analyzer | ✓ | ✓ | ✓ | Excel + CSV in action bar |
+| qPCR Insight | ✓ (incl. upload) | ✓ | ✓ | Shared `FileDropZone`; tool id `qpcr-analyzer` |
 
 ---
 
@@ -118,7 +117,7 @@ This document captures the Phase 1 audit, proposed architecture, and implementat
 ## Figma component hierarchy (for external design)
 
 ```
-Lab Tools Platform
+Benchy Platform
 ├── Shell
 │   ├── Sidebar (Tools, Recent Projects, Recent Files)
 │   ├── TopBar (SessionTabs, Search, ProjectActions, GlobalControls)
@@ -151,7 +150,7 @@ Map Figma components to CSS classes: `lt-btn`, `lt-tabs__*`, `lt-tool-header`, `
 2. Use `ToolHeader` + `LtTabs` (if multi-view) + `ToolActionBar`
 3. Use `lt-btn` / `lt-input` — never introduce new button classes
 4. Register in `sidebarNav.js` and `toolRegistry.js`
-5. Wire `useToolSnapshot` for `.labtools` persistence
+5. Wire `useToolSnapshot` for `.benchy` persistence
 6. Scope tool CSS under a root class (e.g. `.my-tool { ... }`) — avoid global `.btn` leaks
 
 ---
@@ -165,5 +164,6 @@ Map Figma components to CSS classes: `lt-btn`, `lt-tabs__*`, `lt-tool-header`, `
 - [x] Unified horizontal tabs via `LtTabs`
 - [x] Homepage continue-working / recent files styled
 - [x] Session recovery banner styled
-- [ ] qPCR Analyzer (legacy separate app) — migrate if still active
-- [ ] Scope remaining global CSS leaks in legacy tool stylesheets
+- [x] Legacy qPCR Analyzer folder removed (Insight is the sole qPCR app)
+- [x] Tool interiors migrated to `lt-btn` / always-visible `ToolActionBar` / shared `FileDropZone`
+- [ ] Scope remaining global CSS leaks in tool stylesheets (mostly residual density tokens)

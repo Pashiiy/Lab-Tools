@@ -37,11 +37,12 @@ export const TOOL_ICONS = {
   ),
   figure: () => (
     <svg className={iconClass} viewBox="0 0 48 48" fill="none" aria-hidden>
-      <rect x="6" y="8" width="36" height="32" rx="2" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-      <path d="M12 32 L20 22 L28 28 L36 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="20" cy="22" r="2" fill="currentColor" />
-      <circle cx="28" cy="28" r="2" fill="currentColor" />
-      <circle cx="36" cy="16" r="2" fill="currentColor" />
+      <rect x="8" y="10" width="32" height="28" rx="2" stroke="currentColor" strokeWidth="2" opacity="0.45" />
+      <path d="M14 30l6-8 5 5 7-10 4 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="14" cy="30" r="1.5" fill="currentColor" />
+      <circle cx="20" cy="22" r="1.5" fill="currentColor" />
+      <circle cx="25" cy="27" r="1.5" fill="currentColor" />
+      <circle cx="32" cy="17" r="1.5" fill="currentColor" />
     </svg>
   ),
 };

@@ -31,7 +31,7 @@ export default function SessionRecoveryPrompt({ project, onRestore, onDismiss })
           </h3>
           <p className="session-recovery__detail">
             {crashed
-              ? 'Lab Tools closed unexpectedly. '
+              ? 'Benchy closed unexpectedly. '
               : ''}
             {count} tab{count !== 1 ? 's' : ''} ({names.join(', ')}) · autosaved {when}
           </p>

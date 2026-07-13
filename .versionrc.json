@@ -1,6 +1,6 @@
 {
   "tagPrefix": "v",
-  "header": "# Changelog\n\nAll notable changes to Lab Tools are documented here.\nThe format follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).\n\nConventional commit types for version bumps:\n- `fix:` → patch\n- `feat:` → minor\n- `BREAKING CHANGE:` or `feat!:` → major\n",
+  "header": "# Changelog\n\nAll notable changes to Benchy are documented here.\nThe format follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).\n\nConventional commit types for version bumps:\n- `fix:` → patch\n- `feat:` → minor\n- `BREAKING CHANGE:` or `feat!:` → major\n",
   "types": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },

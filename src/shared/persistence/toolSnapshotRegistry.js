@@ -3,7 +3,7 @@
  *
  * Each mounted tool tab registers a `getSnapshot()` that returns its current,
  * JSON-safe state. The workspace autosave orchestrator calls `collectToolStates()`
- * to assemble the `tools` map of a `.labtools` project on demand — without the
+ * to assemble the `tools` map of a `.benchy` project on demand — without the
  * tools needing to push state up on every change.
  */
 

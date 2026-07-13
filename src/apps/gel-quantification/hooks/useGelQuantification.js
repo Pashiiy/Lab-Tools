@@ -50,6 +50,7 @@ export function useGelQuantification(initialState = null) {
   const [fijiParityMode, setFijiParityMode] = useState(true);
   const [roiTemplate, setRoiTemplate] = useState({ ...DEFAULT_ROI_TEMPLATE });
   const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Loading…');
   const [activeTab, setActiveTab] = useState('image');
   const [sessionMeta, setSessionMeta] = useState({ strainName: '', description: '' });
 
@@ -93,7 +94,7 @@ export function useGelQuantification(initialState = null) {
     [resetHistory]
   );
 
-  // Hydrate from a shell-restored `.labtools` project (once on mount).
+  // Hydrate from a shell-restored `.benchy` project (once on mount).
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current || !initialState?.gels?.length) return;
@@ -165,9 +166,13 @@ export function useGelQuantification(initialState = null) {
     [enrichedPairs]
   );
 
+  /** Avoid re-measuring inactive gels when only the active gel's doc is editing. */
+  const inactiveGelResultsRef = useRef(new Map());
+
   const allGelResults = useMemo(() => {
     return gels.map((gel) => {
       if (!gel.raw) {
+        inactiveGelResultsRef.current.delete(gel.id);
         return {
           gelId: gel.id,
           gelName: gel.name,
@@ -176,9 +181,32 @@ export function useGelQuantification(initialState = null) {
           averagedRatio: null,
         };
       }
+
+      if (gel.id !== activeGelId) {
+        const cached = inactiveGelResultsRef.current.get(gel.id);
+        if (cached && cached.doc === gel.doc && cached.raw === gel.raw && cached.name === gel.name) {
+          return cached.result;
+        }
+        const img = toAnalysisImage(gel.raw);
+        const pairs = enrichPairs(gel.doc.pairs, gel.doc.rois, img);
+        const result = {
+          gelId: gel.id,
+          gelName: gel.name,
+          raw: gel.raw,
+          pairs,
+          averagedRatio: computeAveragedRatio(pairs),
+        };
+        inactiveGelResultsRef.current.set(gel.id, {
+          doc: gel.doc,
+          raw: gel.raw,
+          name: gel.name,
+          result,
+        });
+        return result;
+      }
+
       const img = toAnalysisImage(gel.raw);
-      const gelDoc = gel.id === activeGelId ? doc : gel.doc;
-      const pairs = enrichPairs(gelDoc.pairs, gelDoc.rois, img);
+      const pairs = enrichPairs(doc.pairs, doc.rois, img);
       return {
         gelId: gel.id,
         gelName: gel.name,
@@ -268,9 +296,11 @@ export function useGelQuantification(initialState = null) {
   );
 
   const addGelFromFile = useCallback(
-    async (file) => {
+    async (file, { label } = {}) => {
       if (!file) return;
       setLoading(true);
+      if (label) setLoadingLabel(label);
+      else setLoadingLabel('Loading gel image…');
       try {
         const loadedRaw = await loadRawImageFromFile(file);
         const entry = createGelEntry(loadedRaw);
@@ -284,9 +314,46 @@ export function useGelQuantification(initialState = null) {
         alert(err.message || 'Failed to load image');
       } finally {
         setLoading(false);
+        setLoadingLabel('Loading…');
       }
     },
     [applyGelState, queueThumbnailForGel]
+  );
+
+  const addGelsFromFiles = useCallback(
+    async (files) => {
+      const list = [...(files ?? [])].filter(Boolean);
+      if (list.length === 0) return;
+      if (list.length === 1) {
+        await addGelFromFile(list[0]);
+        return;
+      }
+      setLoading(true);
+      try {
+        for (let i = 0; i < list.length; i += 1) {
+          setLoadingLabel(`Loading gel ${i + 1} of ${list.length}…`);
+          const file = list[i];
+          try {
+            const loadedRaw = await loadRawImageFromFile(file);
+            const entry = createGelEntry(loadedRaw);
+            setGels((prev) => [...prev, entry]);
+            setActiveGelId(entry.id);
+            applyGelState(entry);
+            setActiveTab('image');
+            queueThumbnailForGel(entry.id, loadedRaw);
+            trackRecentFile(file, 'gel-quantification').catch(() => {});
+            // Yield so the UI can paint progress between large TIFFs.
+            await new Promise((r) => setTimeout(r, 0));
+          } catch (err) {
+            alert(`${file.name}: ${err.message || 'Failed to load image'}`);
+          }
+        }
+      } finally {
+        setLoading(false);
+        setLoadingLabel('Loading…');
+      }
+    },
+    [addGelFromFile, applyGelState, queueThumbnailForGel]
   );
 
   useOpenFileListener('gel-quantification', addGelFromFile);
@@ -594,7 +661,7 @@ export function useGelQuantification(initialState = null) {
     });
   }, [buildExportPayload, sessionMeta]);
 
-  // JSON-safe snapshot for unified workspace autosave / `.labtools` export.
+  // JSON-safe snapshot for unified workspace autosave / `.benchy` export.
   const getSnapshot = useCallback(() => {
     if (gels.length === 0) return undefined;
     const serializedGels = gels.map((gel) => {
@@ -635,7 +702,9 @@ export function useGelQuantification(initialState = null) {
     resetTemplateDefaults,
     DEFAULT_ROI_TEMPLATE,
     loading,
+    loadingLabel,
     addGelFromFile,
+    addGelsFromFiles,
     switchToGel,
     renameGel,
     goToPrevGel,

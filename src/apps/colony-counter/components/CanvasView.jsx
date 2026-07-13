@@ -1,5 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { hexToRgba } from '../hooks/useColonyCounter';
+import { isEditableTarget } from '../../../shared/input/isEditableTarget';
+import { COLONY_TYPE_META } from '../utils/categories';
 import ZoomControls from './ZoomControls';
 
 const MIN_SCALE = 0.5;
@@ -14,19 +16,50 @@ function getPinchDistance(touches) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+function strokeForDot(dot, isHovered) {
+  if (isHovered) return 'rgba(255,255,255,0.9)';
+  const meta = COLONY_TYPE_META[dot.colonyType];
+  if (meta?.stroke) return meta.stroke;
+  const auto = dot.source === 'auto' && !dot.manuallyAdded;
+  return auto ? 'rgba(180,220,255,0.75)' : 'rgba(255,255,255,0.6)';
+}
+
+/**
+ * Colony canvas interaction.
+ *
+ * Pan is a temporary gesture (middle-button or Space+drag), never a sticky mode.
+ * `didPanRef` only suppresses the click that follows a pan, then clears.
+ *
+ * Mask modes (`mask-ellipse` / `mask-polygon`) are additive — when mode is `mark`
+ * (default), behavior matches the original manual counter.
+ */
 export default function CanvasView({
   image,
   dots,
   opacity,
   onAddDot,
   onRemoveDot,
+  onMoveDot,
   findDotAt,
+  isActive = true,
+  interactionMode = 'mark',
+  mask = null,
+  draftPolygon = null,
+  onMaskChange,
+  onDraftPolygonChange,
 }) {
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
   const hoveredDotRef = useRef(null);
   const didPanRef = useRef(false);
+  const didDragDotRef = useRef(false);
+  const isPanningRef = useRef(false);
+  const spaceDownRef = useRef(false);
+  const panStartRef = useRef(null);
+  const panPointerIdRef = useRef(null);
+  const dragDotRef = useRef(null);
+  const ellipseDragRef = useRef(null);
 
   const touchStartRef = useRef(null);
   const longPressTimerRef = useRef(null);
@@ -36,9 +69,7 @@ export default function CanvasView({
   const touchPanStartRef = useRef(null);
 
   const [transform, setTransform] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
-  const [spaceDown, setSpaceDown] = useState(false);
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0, offsetX: 0, offsetY: 0 });
+  const masking = interactionMode === 'mask-ellipse' || interactionMode === 'mask-polygon';
 
   const viewWidth = image?.displayWidth ?? image?.naturalWidth ?? 0;
   const viewHeight = image?.displayHeight ?? image?.naturalHeight ?? 0;
@@ -90,6 +121,36 @@ export default function CanvasView({
     }
   }, []);
 
+  const updateCursor = useCallback((hit, panning, space, moving) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (panning) {
+      canvas.style.cursor = 'grabbing';
+    } else if (moving) {
+      canvas.style.cursor = 'move';
+    } else if (space) {
+      canvas.style.cursor = 'grab';
+    } else if (hit) {
+      canvas.style.cursor = 'pointer';
+    } else {
+      canvas.style.cursor = 'crosshair';
+    }
+  }, []);
+
+  const endPan = useCallback(() => {
+    if (!isPanningRef.current) return;
+    isPanningRef.current = false;
+    panStartRef.current = null;
+    panPointerIdRef.current = null;
+    updateCursor(null, false, spaceDownRef.current);
+  }, [updateCursor]);
+
+  const clearTransientInput = useCallback(() => {
+    spaceDownRef.current = false;
+    endPan();
+    updateCursor(null, false, false);
+  }, [endPan, updateCursor]);
+
   const handleWheel = useCallback(
     (e) => {
       e.preventDefault();
@@ -111,26 +172,46 @@ export default function CanvasView({
     return () => container.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
+  // Space-to-pan only while this tool tab is active; never while typing.
   useEffect(() => {
+    if (!isActive) {
+      clearTransientInput();
+      return undefined;
+    }
+
     const onKeyDown = (e) => {
-      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        setSpaceDown(true);
-      }
+      if (e.code !== 'Space') return;
+      if (e.repeat) return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      spaceDownRef.current = true;
+      updateCursor(null, isPanningRef.current, true);
     };
     const onKeyUp = (e) => {
-      if (e.code === 'Space') {
-        setSpaceDown(false);
-        setIsPanning(false);
+      if (e.code !== 'Space') return;
+      spaceDownRef.current = false;
+      // Space release must not leave pan mode if middle-button pan is still held.
+      if (!isPanningRef.current) {
+        updateCursor(null, false, false);
       }
     };
+    const onBlur = () => clearTransientInput();
+    const onVisibility = () => {
+      if (document.hidden) clearTransientInput();
+    };
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearTransientInput();
     };
-  }, []);
+  }, [isActive, clearTransientInput, updateCursor]);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -138,27 +219,77 @@ export default function CanvasView({
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const drawMaskShape = (m, fill = 'rgba(47, 111, 237, 0.18)', stroke = 'rgba(120, 170, 255, 0.95)') => {
+      if (!m) return;
+      ctx.save();
+      if (m.type === 'ellipse') {
+        ctx.beginPath();
+        ctx.ellipse(m.cx, m.cy, m.rx, m.ry, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (m.type === 'polygon' && m.points?.length) {
+        ctx.beginPath();
+        m.points.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        if (m.points.length >= 3) {
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        for (const p of m.points) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = stroke;
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    };
+
+    if (mask) drawMaskShape(mask);
+    if (draftPolygon?.length) {
+      drawMaskShape({ type: 'polygon', points: draftPolygon }, 'rgba(47, 111, 237, 0.08)');
+    }
+
+    const drag = dragDotRef.current;
+
     dots.forEach((dot) => {
+      const isDragging = drag && drag.id === dot.id;
+      const x = isDragging ? drag.x : dot.x;
+      const y = isDragging ? drag.y : dot.y;
       const isHovered = hoveredDotRef.current === dot.id;
       ctx.beginPath();
-      ctx.arc(dot.x, dot.y, dot.radius, 0, 2 * Math.PI);
+      ctx.arc(x, y, dot.radius, 0, 2 * Math.PI);
       ctx.fillStyle = hexToRgba(dot.color, opacity);
       ctx.fill();
-      ctx.strokeStyle = isHovered
-        ? 'rgba(255,255,255,0.9)'
-        : 'rgba(255,255,255,0.6)';
-      ctx.lineWidth = isHovered ? 2.5 : 1.5;
+      const meta = COLONY_TYPE_META[dot.colonyType];
+      ctx.strokeStyle = strokeForDot(dot, isHovered);
+      ctx.lineWidth = isHovered || isDragging ? 2.5 : meta?.dashed ? 2 : 1.5;
+      if (meta?.dashed && !isHovered) ctx.setLineDash([4, 3]);
       ctx.stroke();
+      ctx.setLineDash([]);
 
-      if (isHovered) {
+      if (isHovered || isDragging) {
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, dot.radius + 3, 0, 2 * Math.PI);
+        ctx.arc(x, y, dot.radius + 3, 0, 2 * Math.PI);
         ctx.strokeStyle = 'rgba(255,255,255,0.35)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
     });
-  }, [dots, opacity]);
+  }, [dots, opacity, mask, draftPolygon]);
 
   useEffect(() => {
     redraw();
@@ -178,60 +309,115 @@ export default function CanvasView({
     fitToWindow();
   };
 
-  const updateCursor = useCallback((hit, panning, space) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    if (panning) {
-      canvas.style.cursor = 'grabbing';
-    } else if (space) {
-      canvas.style.cursor = 'grab';
-    } else if (hit) {
-      canvas.style.cursor = 'pointer';
-    } else {
-      canvas.style.cursor = 'crosshair';
-    }
-  }, []);
-
-  useEffect(() => {
-    const onMouseUp = () => {
-      if (isPanning) {
-        setIsPanning(false);
-        updateCursor(null, false, spaceDown);
-      }
-    };
-    window.addEventListener('mouseup', onMouseUp);
-    return () => window.removeEventListener('mouseup', onMouseUp);
-  }, [isPanning, spaceDown, updateCursor]);
-
-  const handleMouseDown = (e) => {
+  const handlePointerDown = (e) => {
     const isMiddle = e.button === 1;
-    const isSpacePan = spaceDown && e.button === 0;
+    const isSpacePan = spaceDownRef.current && e.button === 0;
     if (isMiddle || isSpacePan) {
       e.preventDefault();
       didPanRef.current = false;
-      setIsPanning(true);
-      setPanStart({
+      isPanningRef.current = true;
+      panPointerIdRef.current = e.pointerId;
+      panStartRef.current = {
         x: e.clientX,
         y: e.clientY,
         offsetX: transform.offsetX,
         offsetY: transform.offsetY,
-      });
-      updateCursor(null, true, spaceDown);
+      };
+      updateCursor(null, true, spaceDownRef.current, false);
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    if (interactionMode === 'mask-ellipse' && e.button === 0) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!coords) return;
+      e.preventDefault();
+      ellipseDragRef.current = { cx: coords.x, cy: coords.y, pointerId: e.pointerId };
+      onMaskChange?.({ type: 'ellipse', cx: coords.x, cy: coords.y, rx: 1, ry: 1 });
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    if (masking) return;
+
+    // Left-button: start drag if on a colony marker
+    if (e.button === 0 && onMoveDot) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!coords) return;
+      const hit = findDotAt(coords.x, coords.y);
+      if (hit) {
+        e.preventDefault();
+        didDragDotRef.current = false;
+        dragDotRef.current = {
+          id: hit.id,
+          x: hit.x,
+          y: hit.y,
+          pointerId: e.pointerId,
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+        };
+        updateCursor(hit, false, false, true);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        redraw();
+      }
     }
   };
 
-  const handleMouseMove = (e) => {
-    if (isPanning) {
+  const handlePointerMove = (e) => {
+    if (isPanningRef.current && panStartRef.current) {
+      if (
+        panPointerIdRef.current != null &&
+        e.pointerId !== panPointerIdRef.current
+      ) {
+        return;
+      }
       didPanRef.current = true;
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
+      const start = panStartRef.current;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
       setTransform((prev) => ({
         ...prev,
-        offsetX: panStart.offsetX + dx,
-        offsetY: panStart.offsetY + dy,
+        offsetX: start.offsetX + dx,
+        offsetY: start.offsetY + dy,
       }));
       return;
     }
+
+    if (ellipseDragRef.current && ellipseDragRef.current.pointerId === e.pointerId) {
+      const start = ellipseDragRef.current;
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!coords) return;
+      const rx = Math.max(1, Math.abs(coords.x - start.cx));
+      const ry = Math.max(1, Math.abs(coords.y - start.cy));
+      onMaskChange?.({ type: 'ellipse', cx: start.cx, cy: start.cy, rx, ry });
+      return;
+    }
+
+    if (dragDotRef.current && dragDotRef.current.pointerId === e.pointerId) {
+      const drag = dragDotRef.current;
+      const dist = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY);
+      if (dist > 3) didDragDotRef.current = true;
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!coords) return;
+      dragDotRef.current = { ...drag, x: coords.x, y: coords.y };
+      updateCursor(null, false, false, true);
+      redraw();
+      return;
+    }
+
+    if (masking) return;
 
     const coords = getImageCoords(e.clientX, e.clientY);
     if (!coords) return;
@@ -241,34 +427,111 @@ export default function CanvasView({
 
     if (prevHovered !== newHovered) {
       hoveredDotRef.current = newHovered;
-      updateCursor(hit, false, spaceDown);
+      updateCursor(hit, false, spaceDownRef.current, false);
       redraw();
-    } else if (spaceDown) {
-      updateCursor(hit, false, true);
+    } else if (spaceDownRef.current) {
+      updateCursor(hit, false, true, false);
     }
   };
 
-  const handleMouseUp = () => {
-    if (isPanning) {
-      setIsPanning(false);
-      updateCursor(null, false, spaceDown);
+  const handlePointerUp = (e) => {
+    if (ellipseDragRef.current && ellipseDragRef.current.pointerId === e.pointerId) {
+      if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+      ellipseDragRef.current = null;
+      return;
     }
+
+    if (dragDotRef.current && dragDotRef.current.pointerId === e.pointerId) {
+      const drag = dragDotRef.current;
+      if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+      if (didDragDotRef.current && onMoveDot) {
+        onMoveDot(drag.id, drag.x, drag.y);
+      }
+      dragDotRef.current = null;
+      updateCursor(null, false, spaceDownRef.current, false);
+      redraw();
+      return;
+    }
+
+    if (
+      panPointerIdRef.current != null &&
+      e.pointerId !== panPointerIdRef.current
+    ) {
+      return;
+    }
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    endPan();
+  };
+
+  const handlePointerCancel = (e) => {
+    if (dragDotRef.current) {
+      dragDotRef.current = null;
+      didDragDotRef.current = false;
+      redraw();
+    }
+    handlePointerUp(e);
   };
 
   const handleMouseLeave = () => {
-    if (isPanning) return;
+    if (isPanningRef.current || dragDotRef.current) return;
     if (hoveredDotRef.current !== null) {
       hoveredDotRef.current = null;
-      updateCursor(null, false, spaceDown);
+      updateCursor(null, false, spaceDownRef.current, false);
       redraw();
     }
   };
 
   const handleClick = (e) => {
-    if (spaceDown || isPanning || didPanRef.current) return;
+    // Suppress click after pan or after dragging a marker
+    if (didPanRef.current) {
+      didPanRef.current = false;
+      return;
+    }
+    if (didDragDotRef.current) {
+      didDragDotRef.current = false;
+      return;
+    }
+    if (spaceDownRef.current || isPanningRef.current) return;
     if (e.button !== 0) return;
     const coords = getImageCoords(e.clientX, e.clientY);
     if (!coords) return;
+
+    if (interactionMode === 'mask-polygon') {
+      const pts = draftPolygon ? [...draftPolygon] : [];
+      if (pts.length >= 3) {
+        const first = pts[0];
+        const closeDist = Math.hypot(coords.x - first.x, coords.y - first.y);
+        if (closeDist < 12 / Math.max(transform.scale, 0.01)) {
+          onMaskChange?.({ type: 'polygon', points: pts });
+          onDraftPolygonChange?.([]);
+          return;
+        }
+      }
+      pts.push({ x: coords.x, y: coords.y });
+      onDraftPolygonChange?.(pts);
+      return;
+    }
+
+    if (masking) return;
+
     const hit = findDotAt(coords.x, coords.y);
     if (!hit) {
       onAddDot(coords.x, coords.y);
@@ -276,8 +539,9 @@ export default function CanvasView({
   };
 
   const handleContextMenu = (e) => {
-    if (spaceDown) return;
+    if (spaceDownRef.current) return;
     e.preventDefault();
+    if (masking) return;
     const coords = getImageCoords(e.clientX, e.clientY);
     if (!coords) return;
     const hit = findDotAt(coords.x, coords.y);
@@ -313,6 +577,7 @@ export default function CanvasView({
 
       clearLongPressTimer();
       longPressTimerRef.current = setTimeout(() => {
+        if (masking) return;
         const coords = getImageCoords(touch.clientX, touch.clientY);
         if (!coords) return;
         const hit = findDotAt(coords.x, coords.y);
@@ -423,8 +688,12 @@ export default function CanvasView({
     if (
       elapsed < TAP_MAX_MS &&
       distance < TAP_MAX_PX &&
-      !isPanning
+      !isPanningRef.current
     ) {
+      if (masking) {
+        touchStartRef.current = null;
+        return;
+      }
       const coords = getImageCoords(touch.clientX, touch.clientY);
       if (coords) {
         const hit = findDotAt(coords.x, coords.y);
@@ -492,11 +761,12 @@ export default function CanvasView({
             ref={canvasRef}
             className="canvas-view__canvas"
             style={{ touchAction: 'none' }}
-            onMouseDown={handleMouseDown}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
             onClick={handleClick}
             onContextMenu={handleContextMenu}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
