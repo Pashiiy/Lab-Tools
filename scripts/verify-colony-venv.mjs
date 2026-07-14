@@ -41,12 +41,18 @@ async function testPathResolution() {
     if (platform === 'win32') {
       assert(p.pythonRel === '.venv\\Scripts\\python.exe', `win pythonRel: ${p.pythonRel}`);
       assert(p.pipRel === '.venv\\Scripts\\pip.exe', `win pipRel: ${p.pipRel}`);
-      assert(getSetupCommand(BACKEND, 'win32').includes('.venv\\Scripts\\pip.exe'), 'win setup mentions Scripts\\pip');
+      assert(
+        getSetupCommand(BACKEND, 'win32').includes('.venv\\Scripts\\python.exe -m pip'),
+        'win setup uses python -m pip'
+      );
       assert(!getSetupCommand(BACKEND, 'win32').includes('.venv/bin/'), 'win setup must not use bin/');
     } else {
       assert(p.pythonRel === '.venv/bin/python', `${platform} pythonRel: ${p.pythonRel}`);
       assert(p.pipRel === '.venv/bin/pip', `${platform} pipRel: ${p.pipRel}`);
-      assert(getSetupCommand(BACKEND, platform).includes('.venv/bin/pip'), `${platform} setup uses bin/pip`);
+      assert(
+        getSetupCommand(BACKEND, platform).includes('.venv/bin/python -m pip'),
+        `${platform} setup uses python -m pip`
+      );
     }
     console.log(`  ✓ ${platform}: ${p.pythonRel} / ${p.pipRel}`);
   }
@@ -94,9 +100,9 @@ async function testCleanVenvAndSidecar() {
       assert(msg.includes('Auto Count backend dependencies are missing'), 'error headline');
       assert(
         process.platform === 'win32'
-          ? msg.includes('Scripts')
-          : msg.includes('.venv/bin/pip'),
-        'error includes platform-correct pip path'
+          ? msg.includes('Scripts') && msg.includes('python.exe -m pip')
+          : msg.includes('.venv/bin/python -m pip'),
+        'error includes platform-correct python -m pip path'
       );
     }
 

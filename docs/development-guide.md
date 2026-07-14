@@ -29,12 +29,12 @@ Manual equivalent:
 # macOS / Linux
 cd backend/colony_counter
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements.txt
 
 # Windows (PowerShell / cmd)
 cd backend\colony_counter
 python -m venv .venv
-.venv\Scripts\pip.exe install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Electron starts this service automatically (and checks that `uvicorn` is importable before spawn). Standalone: `npm run colony-api` then `curl` as in `backend/colony_counter/README.md`.

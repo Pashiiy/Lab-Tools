@@ -18,8 +18,8 @@ Manual:
 cd backend/colony_counter
 python3 -m venv .venv          # Windows: python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-# Windows without activate: .venv\Scripts\pip.exe install -r requirements.txt
+python -m pip install -r requirements.txt
+# Windows without activate: .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ## Standalone (debug)
