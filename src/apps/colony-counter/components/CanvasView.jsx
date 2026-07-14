@@ -47,6 +47,8 @@ export default function CanvasView({
   draftPolygon = null,
   onMaskChange,
   onDraftPolygonChange,
+  clusters = null,
+  onEditClusterCount,
 }) {
   const containerRef = useRef(null);
   const imageRef = useRef(null);
@@ -263,6 +265,79 @@ export default function CanvasView({
       drawMaskShape({ type: 'polygon', points: draftPolygon }, 'rgba(47, 111, 237, 0.08)');
     }
 
+    // Fused-cluster overlays (hatched region + count badge — not fake markers)
+    if (clusters?.length) {
+      for (const cl of clusters) {
+        const pts = cl.contour;
+        if (!pts?.length) continue;
+        const meta = COLONY_TYPE_META[cl.colonyType] || COLONY_TYPE_META.yeast;
+        ctx.save();
+        ctx.beginPath();
+        pts.forEach((p, i) => {
+          const x = Array.isArray(p) ? p[0] : p.x;
+          const y = Array.isArray(p) ? p[1] : p.y;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fillStyle =
+          cl.colonyType === 'contaminant'
+            ? 'rgba(225, 29, 72, 0.22)'
+            : cl.colonyType === 'uncertain'
+              ? 'rgba(245, 158, 11, 0.22)'
+              : 'rgba(148, 163, 184, 0.22)';
+        ctx.fill();
+        ctx.strokeStyle = meta.stroke || 'rgba(200,200,210,0.9)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Hatch
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        const xs = pts.map((p) => (Array.isArray(p) ? p[0] : p.x));
+        const ys = pts.map((p) => (Array.isArray(p) ? p[1] : p.y));
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        for (let x = minX - (maxY - minY); x < maxX + (maxY - minY); x += 10) {
+          ctx.beginPath();
+          ctx.moveTo(x, minY);
+          ctx.lineTo(x + (maxY - minY), maxY);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+        const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+        const label = String(cl.estimatedCount ?? 0);
+        ctx.font = 'bold 13px IBM Plex Sans, system-ui, sans-serif';
+        const tw = ctx.measureText(label).width;
+        const bw = tw + 14;
+        const bh = 22;
+        ctx.fillStyle = 'rgba(20, 20, 28, 0.85)';
+        ctx.strokeStyle = meta.stroke || '#fff';
+        ctx.lineWidth = 1.5;
+        const bx = cx - bw / 2;
+        const by = cy - bh / 2;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(bx, by, bw, bh, 6);
+        } else {
+          ctx.rect(bx, by, bw, bh);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f5f5f7';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, cx, cy + 0.5);
+      }
+    }
+
     const drag = dragDotRef.current;
 
     dots.forEach((dot) => {
@@ -289,7 +364,7 @@ export default function CanvasView({
         ctx.stroke();
       }
     });
-  }, [dots, opacity, mask, draftPolygon]);
+  }, [dots, opacity, mask, draftPolygon, clusters]);
 
   useEffect(() => {
     redraw();
@@ -531,6 +606,28 @@ export default function CanvasView({
     }
 
     if (masking) return;
+
+    // Click cluster badge → edit estimated count
+    if (clusters?.length && onEditClusterCount) {
+      for (const cl of clusters) {
+        const pts = cl.contour;
+        if (!pts?.length) continue;
+        const xs = pts.map((p) => (Array.isArray(p) ? p[0] : p.x));
+        const ys = pts.map((p) => (Array.isArray(p) ? p[1] : p.y));
+        const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+        const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+        if (Math.hypot(coords.x - cx, coords.y - cy) < 18) {
+          const next = window.prompt(
+            'Edit estimated colony count for this fused cluster:',
+            String(cl.estimatedCount ?? 0)
+          );
+          if (next != null && next.trim() !== '') {
+            onEditClusterCount(cl.id, next);
+          }
+          return;
+        }
+      }
+    }
 
     const hit = findDotAt(coords.x, coords.y);
     if (!hit) {

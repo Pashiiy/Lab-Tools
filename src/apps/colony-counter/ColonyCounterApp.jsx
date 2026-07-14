@@ -6,11 +6,14 @@ import BatchSummary from './components/BatchSummary';
 import IOSInstallBanner from './components/IOSInstallBanner';
 import SessionNameEditor from './components/SessionNameEditor';
 import { useToolSnapshot } from '../../shared/persistence/useToolSnapshot';
+import PipelineStagesViewer from './components/PipelineStagesViewer';
 import {
   isAutoCountAvailable,
+  isGroundTruthSaveAvailable,
   isMaskComplete,
   requestAutoCount,
   requestSuggestDish,
+  saveGroundTruthFixture,
 } from './utils/autoCountClient';
 import ToolHeader from '../../shared/ui/ToolHeader';
 import ToolActionBar from '../../shared/ui/ToolActionBar';
@@ -33,6 +36,11 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
   const [masksByPlate, setMasksByPlate] = useState({});
   const [draftPolygon, setDraftPolygon] = useState([]);
   const [suggestBusy, setSuggestBusy] = useState(false);
+  const [debugStages, setDebugStages] = useState(null);
+  const [debugBusy, setDebugBusy] = useState(false);
+  const [gtDensity, setGtDensity] = useState('moderate');
+  const [gtBusy, setGtBusy] = useState(false);
+  const [gtToast, setGtToast] = useState(null);
 
   const {
     dots,
@@ -66,6 +74,8 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
     canUndo,
     canRedo,
     colonyCount,
+    clusters,
+    setClusterEstimatedCount,
     dilutionMode,
     setDilutionMode,
     dilutionExponent,
@@ -162,7 +172,7 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
     setAutoCountError(null);
     try {
       const result = await requestAutoCount(image.src, currentMask, image.name || 'plate.png');
-      applyAutoColonies(result.colonies || []);
+      applyAutoColonies(result.colonies || [], result.clusters || []);
       setAutoCountByType(result.countByType || null);
       setAutoCountDone(true);
       setInteractionMode('mark');
@@ -173,6 +183,35 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
       setAutoCountBusy(false);
     }
   }, [image, autoCountBusy, dots.length, applyAutoColonies, maskReady, currentMask]);
+
+  const handleShowStages = useCallback(async () => {
+    if (!image?.src || !maskReady || debugBusy) return;
+    if (!isAutoCountAvailable()) {
+      setAutoCountError('Processing stages are available in the Benchy desktop app only.');
+      return;
+    }
+    setDebugBusy(true);
+    setAutoCountError(null);
+    try {
+      // Same pipeline run returns colonies + stages (not a separate mismatch-prone re-count).
+      const result = await requestAutoCount(image.src, currentMask, image.name || 'plate.png', {
+        debug: true,
+      });
+      if (!result.stages?.length) {
+        setAutoCountError('Debug run returned no stages.');
+        return;
+      }
+      applyAutoColonies(result.colonies || [], result.clusters || []);
+      setAutoCountByType(result.countByType || null);
+      setAutoCountDone(true);
+      setDebugStages(result.stages);
+      setInteractionMode('mark');
+    } catch (err) {
+      setAutoCountError(err?.message || 'Failed to load processing stages');
+    } finally {
+      setDebugBusy(false);
+    }
+  }, [image, maskReady, debugBusy, currentMask, applyAutoColonies]);
 
   const handleSuggestDish = useCallback(async () => {
     if (!image?.src || suggestBusy) return;
@@ -193,6 +232,52 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
       setSuggestBusy(false);
     }
   }, [image, suggestBusy, setCurrentMask]);
+
+  const canSaveGroundTruth =
+    isGroundTruthSaveAvailable() &&
+    interactionMode === 'mark' &&
+    !!image &&
+    maskReady &&
+    dots.length > 0 &&
+    viewTab === 'marking';
+
+  const handleSaveGroundTruth = useCallback(async () => {
+    if (!canSaveGroundTruth || gtBusy) return;
+    setGtBusy(true);
+    setGtToast(null);
+    setAutoCountError(null);
+    try {
+      const plateName =
+        plateMeta?.sampleName?.trim() ||
+        image?.name?.replace(/\.[^.]+$/, '') ||
+        `plate-${activePlateId || '1'}`;
+      const result = await saveGroundTruthFixture({
+        imageSrc: image.src,
+        plateName,
+        count: dots.length,
+        mask: currentMask,
+        density: gtDensity,
+        notes: 'Manual count from Benchy Colony Counter',
+      });
+      setGtToast(
+        `Ground truth saved → ${result.relativePath || result.folderName} (${dots.length} markers, ${gtDensity})`
+      );
+      window.setTimeout(() => setGtToast(null), 5000);
+    } catch (err) {
+      setAutoCountError(err?.message || 'Failed to save ground truth');
+    } finally {
+      setGtBusy(false);
+    }
+  }, [
+    canSaveGroundTruth,
+    gtBusy,
+    plateMeta,
+    image,
+    activePlateId,
+    dots.length,
+    currentMask,
+    gtDensity,
+  ]);
 
   const typeHint = useMemo(() => {
     if (!autoCountByType) return null;
@@ -325,6 +410,42 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
         </button>
         <button
           type="button"
+          className="lt-btn"
+          onClick={handleShowStages}
+          disabled={!image || !maskReady || debugBusy || !isAutoCountAvailable()}
+          title="Run Auto Count with pipeline stage images from the same pass"
+        >
+          {debugBusy ? 'Loading Stages…' : 'Show Processing Stages'}
+        </button>
+        {canSaveGroundTruth && (
+          <>
+            <label className="cc-gt-density" title="Density label for the accuracy harness">
+              <span>Density</span>
+              <select
+                className="lt-input"
+                value={gtDensity}
+                onChange={(e) => setGtDensity(e.target.value)}
+                disabled={gtBusy}
+              >
+                <option value="sparse">sparse</option>
+                <option value="moderate">moderate</option>
+                <option value="dense">dense</option>
+                <option value="mixed">mixed</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="lt-btn"
+              onClick={handleSaveGroundTruth}
+              disabled={gtBusy}
+              title="Write this plate’s image, mask, and manual marker count into tests/fixtures for the accuracy harness"
+            >
+              {gtBusy ? 'Saving…' : 'Save as Ground Truth'}
+            </button>
+          </>
+        )}
+        <button
+          type="button"
           className="lt-btn lt-btn--danger"
           onClick={clearAll}
           disabled={!image}
@@ -332,6 +453,15 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
           Clear All
         </button>
       </ToolActionBar>
+
+      {gtToast && (
+        <div className="cc-gt-toast" role="status">
+          <span>{gtToast}</span>
+          <button type="button" className="lt-btn lt-btn--small" onClick={() => setGtToast(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {interactionMode.startsWith('mask') && (
         <div className="cc-mask-hint" role="status">
@@ -348,6 +478,10 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
             Dismiss
           </button>
         </div>
+      )}
+
+      {debugStages && (
+        <PipelineStagesViewer stages={debugStages} onClose={() => setDebugStages(null)} />
       )}
 
       <input
@@ -435,6 +569,8 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
                 draftPolygon={draftPolygon}
                 onMaskChange={setCurrentMask}
                 onDraftPolygonChange={setDraftPolygon}
+                clusters={clusters}
+                onEditClusterCount={setClusterEstimatedCount}
               />
             </div>
           </>

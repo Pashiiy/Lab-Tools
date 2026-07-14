@@ -1,0 +1,13 @@
+{
+  "count": 432,
+  "density": "moderate",
+  "mask": {
+    "type": "ellipse",
+    "cx": 584.0681274692433,
+    "cy": 974.7026342555417,
+    "rx": 475.4488034979945,
+    "ry": 461.6821934927507
+  },
+  "notes": "Manual count from Benchy Colony Counter",
+  "savedAt": "2026-07-14T16:15:44.018Z"
+}

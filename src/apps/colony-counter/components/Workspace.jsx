@@ -32,6 +32,8 @@ export default function Workspace({
   draftPolygon = null,
   onMaskChange,
   onDraftPolygonChange,
+  clusters = null,
+  onEditClusterCount,
 }) {
   const handleUpload = (filesOrFile) => {
     if (Array.isArray(filesOrFile)) onUpload(filesOrFile);
@@ -92,6 +94,8 @@ export default function Workspace({
           draftPolygon={draftPolygon}
           onMaskChange={onMaskChange}
           onDraftPolygonChange={onDraftPolygonChange}
+          clusters={clusters}
+          onEditClusterCount={onEditClusterCount}
         />
       )}
     </main>

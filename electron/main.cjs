@@ -6,6 +6,7 @@ const {
   stopColonyService,
   countColonies,
   suggestDish,
+  saveGroundTruthFixture,
 } = require('./colonyCounterService.cjs');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -151,7 +152,7 @@ ipcMain.handle('colony:ensure-service', async () => {
   }
 });
 
-ipcMain.handle('colony:count', async (_event, { imageBase64, filename, mask } = {}) => {
+ipcMain.handle('colony:count', async (_event, { imageBase64, filename, mask, debug } = {}) => {
   try {
     if (!imageBase64) {
       return { success: false, error: 'Missing image data' };
@@ -160,7 +161,7 @@ ipcMain.handle('colony:count', async (_event, { imageBase64, filename, mask } = 
       return { success: false, error: 'A counting mask is required. Draw Mask Area first.' };
     }
     const buffer = Buffer.from(imageBase64, 'base64');
-    const result = await countColonies(buffer, filename || 'plate.png', mask);
+    const result = await countColonies(buffer, filename || 'plate.png', mask, Boolean(debug));
     return { success: true, result };
   } catch (err) {
     return { success: false, error: err.message || String(err) };
@@ -174,6 +175,15 @@ ipcMain.handle('colony:suggest-dish', async (_event, { imageBase64, filename } =
     }
     const buffer = Buffer.from(imageBase64, 'base64');
     const result = await suggestDish(buffer, filename || 'plate.png');
+    return { success: true, result };
+  } catch (err) {
+    return { success: false, error: err.message || String(err) };
+  }
+});
+
+ipcMain.handle('colony:save-ground-truth', async (_event, payload = {}) => {
+  try {
+    const result = saveGroundTruthFixture(payload);
     return { success: true, result };
   } catch (err) {
     return { success: false, error: err.message || String(err) };

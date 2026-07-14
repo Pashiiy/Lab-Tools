@@ -164,6 +164,105 @@ html[data-theme='light'] .colony-counter {
   font-size: 0.8125rem;
 }
 
+.cc-gt-density {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--lt-text-muted, #9ca3af);
+}
+
+.cc-gt-density .lt-input {
+  min-width: 110px;
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+}
+
+.cc-gt-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 var(--lt-space-4);
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--lt-success, #22c55e) 45%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lt-success, #22c55e) 14%, transparent);
+  color: var(--lt-text);
+  font-size: 0.8125rem;
+}
+
+.cc-stages-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 24px;
+}
+
+.cc-stages-modal__panel {
+  width: min(960px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--lt-panel, #1a1a22);
+  border: 1px solid var(--lt-border, #2a2a32);
+  border-radius: 10px;
+  padding: 12px 14px 14px;
+  color: var(--lt-text, #e8e8ed);
+}
+
+.cc-stages-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cc-stages-modal__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--lt-text-muted, #9ca3af);
+}
+
+.cc-stages-modal__viewport {
+  height: min(56vh, 520px);
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--lt-border, #2a2a32);
+  background: #0d0d12;
+  cursor: grab;
+  position: relative;
+}
+
+.cc-stages-modal__img {
+  max-width: none;
+  transform-origin: 0 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+.cc-stages-modal__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cc-stages-modal__slider {
+  flex: 1;
+}
+
+.cc-stages-modal__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--lt-text-muted, #9ca3af);
+}
+
 /* Header (legacy — kept for reference during migration) */
 .colony-counter .header {
   display: flex;

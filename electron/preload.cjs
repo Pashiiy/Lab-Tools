@@ -16,10 +16,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('window:open-research', { projectId }),
   colonyCounter: {
     ensureService: () => ipcRenderer.invoke('colony:ensure-service'),
-    countColonies: (imageBase64, filename, mask) =>
-      ipcRenderer.invoke('colony:count', { imageBase64, filename, mask }),
+    countColonies: (imageBase64, filename, mask, debug = false) =>
+      ipcRenderer.invoke('colony:count', { imageBase64, filename, mask, debug }),
     suggestDish: (imageBase64, filename) =>
       ipcRenderer.invoke('colony:suggest-dish', { imageBase64, filename }),
+    saveGroundTruth: (payload) => ipcRenderer.invoke('colony:save-ground-truth', payload),
   },
   onClosing: (callback) => {
     const handler = () => callback();

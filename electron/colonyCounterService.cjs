@@ -188,14 +188,14 @@ function postMultipart(pathName, body, boundary, timeoutMs = 60000) {
         timeout: timeoutMs,
       },
       (res) => {
-        let data = '';
+        const chunks = [];
         res.on('data', (c) => {
-          data += c;
+          chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c));
         });
         res.on('end', () => {
           let json;
           try {
-            json = JSON.parse(data);
+            json = JSON.parse(Buffer.concat(chunks).toString('utf8'));
           } catch {
             reject(new Error(`Invalid response from colony service (${res.statusCode})`));
             return;
@@ -229,13 +229,13 @@ function postMultipart(pathName, body, boundary, timeoutMs = 60000) {
  * @param {Buffer} imageBuffer
  * @param {string} filename
  * @param {object} maskSpec required mask { type, ... }
+ * @param {boolean} [debug]
  */
-async function countColonies(imageBuffer, filename = 'plate.png', maskSpec) {
+async function countColonies(imageBuffer, filename = 'plate.png', maskSpec, debug = false) {
   if (!maskSpec || typeof maskSpec !== 'object') {
     throw new Error('A counting mask is required');
   }
-  const { baseUrl } = await ensureColonyService();
-  void baseUrl;
+  await ensureColonyService();
   const boundary = `----BenchyBoundary${Date.now()}`;
   const body = multipartBody(
     [
@@ -252,7 +252,9 @@ async function countColonies(imageBuffer, filename = 'plate.png', maskSpec) {
     ],
     boundary
   );
-  return postMultipart('/api/count-colonies', body, boundary);
+  const pathName = debug ? '/api/count-colonies?debug=true' : '/api/count-colonies';
+  // Ensemble multi-scale pass can take 30–90s+ on large plates; debug adds stage encode.
+  return postMultipart(pathName, body, boundary, debug ? 300000 : 180000);
 }
 
 async function suggestDish(imageBuffer, filename = 'plate.png') {
@@ -272,10 +274,64 @@ async function suggestDish(imageBuffer, filename = 'plate.png') {
   return postMultipart('/api/suggest-dish', body, boundary, 30000);
 }
 
+function sanitizeFixtureName(name) {
+  const raw = String(name || 'plate')
+    .replace(/\.[^.]+$/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return raw || `plate-${Date.now().toString(36)}`;
+}
+
+/**
+ * Write a ground-truth fixture for the accuracy harness.
+ * @param {{ imageBase64: string, plateName?: string, count: number, mask: object, density: string, notes?: string }} payload
+ */
+function saveGroundTruthFixture(payload) {
+  const { imageBase64, plateName, count, mask, density, notes } = payload || {};
+  if (!imageBase64) throw new Error('Missing image data');
+  if (!mask || typeof mask !== 'object') throw new Error('Missing mask');
+  if (!Number.isFinite(Number(count)) || Number(count) < 0) {
+    throw new Error('Invalid marker count');
+  }
+  const dens = ['sparse', 'moderate', 'dense', 'mixed'].includes(density)
+    ? density
+    : 'moderate';
+
+  const fixturesRoot = path.join(getBackendDir(), 'tests', 'fixtures');
+  const folderName = sanitizeFixtureName(plateName);
+  const dir = path.join(fixturesRoot, folderName);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const imagePath = path.join(dir, 'image.png');
+  const truthPath = path.join(dir, 'truth.json');
+  fs.writeFileSync(imagePath, Buffer.from(imageBase64, 'base64'));
+
+  const truth = {
+    count: Math.floor(Number(count)),
+    density: dens,
+    mask,
+    notes: notes || 'Manual count from Benchy Colony Counter',
+    savedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(truthPath, `${JSON.stringify(truth, null, 2)}\n`, 'utf8');
+
+  return {
+    folder: dir,
+    folderName,
+    imagePath,
+    truthPath,
+    relativePath: path.join('tests', 'fixtures', folderName),
+  };
+}
+
 module.exports = {
   ensureColonyService,
   stopColonyService,
   countColonies,
   suggestDish,
+  saveGroundTruthFixture,
   getBackendDir,
 };

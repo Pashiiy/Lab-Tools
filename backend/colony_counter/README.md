@@ -46,12 +46,28 @@ curl -s -X POST http://127.0.0.1:8765/api/suggest-dish \
 
 ## Pipeline
 
-1. Apply user mask (+ inward erosion) → crop to bbox  
-2. Flatten illumination; mask specular glare (HSV)  
-3. Adaptive threshold + morphology  
-4. Conservative watershed + merge-back pass  
-5. Filter by area / circularity / solidity / rim / glare  
-6. Classify yeast vs red/pink contaminant (per-image saturation calibration)  
-7. Confidence threshold (drop low-confidence blobs)
+1. First-pass **scale estimate** from clean isolated colonies → adaptive kernels / area / seed spacing  
+2. Apply user mask (+ inward erosion) → crop to bbox  
+3. Flatten illumination; mask large specular glare only  
+4. Adaptive tophat segmentation + bright-fill for solid fused masses  
+5. Peel fused components; conservative watershed + LoG cross-check on the rest  
+6. Filter individuals; classify yeast vs contaminant  
+7. **Fused clusters**: `floor(area / estimatedColonyArea)` with contour + editable count (no fake markers)
+
+Response includes `individuallyDetected`, `estimatedFromClusters`, `colonies[]`, and `clusters[]`.
 
 Python runtime is **not** bundled in the installer for MVP; install the venv on the machine running Benchy desktop.
+
+## Accuracy harness
+
+```bash
+cd backend/colony_counter
+.venv/bin/python -m tests.accuracy_harness
+# or from repo root: npm run test:colony-accuracy
+```
+
+Add manually counted plates under `tests/fixtures/<name>/` (see `tests/fixtures/README.md`). Without real GT, synthetic smoke cases are generated under `_synthetic/`.
+
+## Debug stages
+
+`POST /api/count-colonies?debug=true` returns the normal payload plus `stages[]` (downscaled PNG base64). In the desktop app: **Show Processing Stages** after a mask is drawn.

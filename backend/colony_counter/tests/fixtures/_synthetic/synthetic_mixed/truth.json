@@ -1,0 +1,13 @@
+{
+  "count": 160,
+  "countIsApproximate": true,
+  "density": "mixed",
+  "mask": {
+    "type": "ellipse",
+    "cx": 350,
+    "cy": 350,
+    "rx": 310,
+    "ry": 310
+  },
+  "notes": "Synthetic fixture \u2014 replace with manually counted plates"
+}

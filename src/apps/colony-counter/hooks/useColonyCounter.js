@@ -55,6 +55,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   // Active-plate live editor state (synced into plates[] on switch / snapshot)
   const [dots, setDots] = useState([]);
+  const [clusters, setClusters] = useState([]);
   const [history, setHistory] = useState([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -100,6 +101,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     liveRef.current = {
       image,
       dots,
+      clusters,
       categories,
       activeCategory,
       dotRadius,
@@ -141,6 +143,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
       name: live.plateMeta.sampleName || live.image.name || 'Plate',
       image: live.image,
       dots: live.dots,
+      clusters: live.clusters,
       activeCategory: live.activeCategory,
       dotRadius: live.dotRadius,
       opacity: live.opacity,
@@ -209,6 +212,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
     const plateDots = plate.dots || [];
     setDots(plateDots);
+    setClusters(Array.isArray(plate.clusters) ? plate.clusters : []);
     setHistory([plateDots]);
     setHistoryIndex(0);
     setActiveCategory(plate.activeCategory || 'cat-1');
@@ -359,7 +363,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   /** Replace active-plate dots with Auto Count results (one history entry). */
   const applyAutoColonies = useCallback(
-    (colonies) => {
+    (colonies, clusterList = []) => {
       const list = Array.isArray(colonies) ? colonies : [];
       setCategories((prev) => ensureTypeCategories(prev));
       const cats = ensureTypeCategories(categories);
@@ -386,10 +390,36 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
           manuallyEdited: false,
         };
       }).filter(Boolean);
+      const nextClusters = (Array.isArray(clusterList) ? clusterList : []).map((cl, i) => ({
+        id: cl.id || `cluster-${i + 1}`,
+        estimatedCount: Math.max(0, Math.floor(Number(cl.estimatedCount) || 0)),
+        area: cl.area ?? null,
+        contour: Array.isArray(cl.contour) ? cl.contour : [],
+        colonyType:
+          cl.colonyType === 'contaminant' || cl.colonyType === 'uncertain'
+            ? cl.colonyType
+            : 'yeast',
+        manuallyEdited: false,
+      }));
       pushHistory(newDots);
+      setClusters(nextClusters);
+      markDirty();
       return newDots.length;
     },
-    [activeCat, categories, dotRadius, pushHistory]
+    [activeCat, categories, dotRadius, pushHistory, markDirty]
+  );
+
+  const setClusterEstimatedCount = useCallback(
+    (clusterId, estimatedCount) => {
+      const n = Math.max(0, Math.floor(Number(estimatedCount) || 0));
+      setClusters((prev) =>
+        prev.map((c) =>
+          c.id === clusterId ? { ...c, estimatedCount: n, manuallyEdited: true } : c
+        )
+      );
+      markDirty();
+    },
+    [markDirty]
   );
 
   const setDotColonyType = useCallback(
@@ -416,9 +446,16 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
   );
 
   const clearAll = useCallback(() => {
-    if (dots.length === 0) return;
+    if (dots.length === 0 && clusters.length === 0) return;
     pushHistory([]);
-  }, [dots, pushHistory]);
+    setClusters([]);
+  }, [dots, clusters, pushHistory]);
+
+  const clusterCount = useMemo(
+    () => clusters.reduce((sum, c) => sum + (Number(c.estimatedCount) || 0), 0),
+    [clusters]
+  );
+  const colonyCount = dots.length + clusterCount;
 
   const updateCategoryLabel = useCallback(
     (id, label) => {
@@ -574,6 +611,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
         name: result.name,
       },
       dots: [],
+      clusters: [],
       activeCategory: 'cat-1',
       dotRadius: 12,
       opacity: 0.7,
@@ -981,6 +1019,8 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     moveDot,
     applyAutoColonies,
     setDotColonyType,
+    setClusterEstimatedCount,
+    clusters,
     clearAll,
     findDotAt,
     undo,
@@ -988,7 +1028,8 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     exportImage,
     canUndo,
     canRedo,
-    colonyCount: dots.length,
+    colonyCount,
+    clusterCount,
     dilutionMode,
     setDilutionMode: handleSetDilutionMode,
     dilutionExponent,
