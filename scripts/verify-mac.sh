@@ -2,14 +2,15 @@
 #
 # verify-mac.sh — macOS Electron build integrity safety gate.
 #
-# Validates a packaged "Lab Tools.app" bundle (from electron-builder output
-# or mounted inside a DMG) BEFORE it is published to a GitHub Release.
+# Validates packaged "${productName}.app" bundles (from electron-builder
+# output under release/) BEFORE they are published to a GitHub Release.
 #
 # Usage:
 #   bash scripts/verify-mac.sh [path/to/Some.app]
 #   npm run verify:mac
 #
-# If no path is given, the newest "Lab Tools.app" under release/ is used.
+# If no path is given, every matching .app under release/ is verified
+# (CI builds both arm64 and x64, so there can be more than one).
 #
 # Exit codes:
 #   0  signature is valid (Gatekeeper rejection alone is tolerated for
@@ -20,8 +21,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Match electron-builder's productName (currently "Benchy"), not a hard-coded
+# legacy name. Falls back to Benchy if package.json cannot be read.
+PRODUCT_NAME="$(
+  node -p "require('${ROOT}/package.json').build?.productName || require('${ROOT}/package.json').productName || 'Benchy'" 2>/dev/null \
+    || echo "Benchy"
+)"
+APP_NAME="${PRODUCT_NAME}.app"
+
 # Collect the bundle(s) to verify. With an explicit path, verify just that
-# bundle; otherwise verify EVERY "Lab Tools.app" under release/ (CI builds
+# bundle; otherwise verify EVERY matching .app under release/ (CI builds
 # both arm64 and x64, so there can be more than one).
 APPS=()
 if [[ -n "${1:-}" ]]; then
@@ -29,14 +38,17 @@ if [[ -n "${1:-}" ]]; then
 else
   while IFS= read -r p; do
     [[ -n "$p" ]] && APPS+=("$p")
-  done < <(find "$ROOT/release" -maxdepth 3 -path '*/Lab Tools.app' 2>/dev/null)
+  done < <(find "$ROOT/release" -maxdepth 3 -name "$APP_NAME" -type d 2>/dev/null | sort)
 fi
 
 if [[ ${#APPS[@]} -eq 0 ]]; then
   echo "FAIL: no .app bundle found (pass a path as the first argument)" >&2
-  echo "      searched: $ROOT/release/**/Lab Tools.app" >&2
+  echo "      searched: $ROOT/release/**/${APP_NAME}" >&2
+  echo "      (productName from package.json: ${PRODUCT_NAME})" >&2
   exit 1
 fi
+
+echo "Found ${#APPS[@]} bundle(s) named ${APP_NAME}"
 
 # verify_one <app-path> -> 0 = valid, 1 = FAIL
 verify_one() {
@@ -50,6 +62,14 @@ verify_one() {
   echo "=============================================================="
   echo "Verifying: $APP_PATH"
   echo "=============================================================="
+
+  # Confirm colony_counter sidecar source was packaged into Resources.
+  local sidecar="${APP_PATH}/Contents/Resources/colony_counter/main.py"
+  if [[ ! -f "$sidecar" ]]; then
+    echo "FAIL: colony_counter sidecar missing at Contents/Resources/colony_counter/main.py" >&2
+    return 1
+  fi
+  echo "OK: colony_counter sidecar present (main.py)."
 
   # 1) Strict signature integrity check. Any non-zero exit is a hard FAIL.
   echo

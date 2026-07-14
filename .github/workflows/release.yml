@@ -3,6 +3,15 @@ name: Release
 # SINGLE SOURCE OF TRUTH for releases.
 # Triggered ONLY by version tags pushed via `npm run release` (scripts/release.mjs).
 # This is the ONLY workflow allowed to build installers and create GitHub Releases.
+#
+# Produces three installers:
+#   - macOS Apple Silicon (arm64) DMG
+#   - macOS Intel (x64) DMG
+#   - Windows NSIS (.exe)
+#
+# Both mac arches are built in one macos job (electron-builder cross-compiles
+# x64 Electron on arm64 runners). Windows stays on windows-latest because the
+# NSIS toolchain and any native deps are more reliable on a real Windows runner.
 on:
   push:
     tags:
@@ -13,7 +22,7 @@ permissions:
 
 jobs:
   build-mac:
-    name: macOS DMG
+    name: macOS DMG (arm64 + x64)
     runs-on: macos-latest
     steps:
       - name: Checkout repository
@@ -47,20 +56,21 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run build
 
-      - name: Package macOS DMG (ad-hoc signed, no notarization)
+      - name: Package macOS DMGs (arm64 + x64, ad-hoc signed, no notarization)
         env:
           # Prevent partial signing from stray CI keychain identities.
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist:mac
 
-      - name: Verify app signature (fails the release on a broken bundle)
+      - name: Verify app signatures (fails the release on a broken / missing bundle)
         run: npm run verify:mac
 
-      - name: Upload macOS DMG artifact
+      - name: Upload macOS DMG artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mac-dmg
-          path: release/*.dmg
+          path: |
+            release/*.dmg
           if-no-files-found: error
           retention-days: 30
 
@@ -102,6 +112,10 @@ jobs:
       - name: Package Windows installer
         run: npm run dist:win
 
+      - name: Verify Windows installer exists
+        shell: bash
+        run: npm run verify:win
+
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -121,6 +135,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist-artifacts
+
+      - name: List artifacts
+        run: find dist-artifacts -type f | sort
 
       - name: Publish release (installers only — no raw .app / source zips)
         uses: softprops/action-gh-release@v2

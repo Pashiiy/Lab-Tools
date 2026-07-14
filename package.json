@@ -34,9 +34,10 @@
     "predist:all": "npm run generate-icons",
     "dist": "npm run build && electron-builder --publish never",
     "dist:win": "electron-builder --win --publish never",
-    "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --publish never",
-    "dist:all": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --win --publish never",
+    "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --x64 --publish never",
+    "dist:all": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --x64 --win --publish never",
     "verify:mac": "bash scripts/verify-mac.sh",
+    "verify:win": "bash scripts/verify-win.sh",
     "validate:lock": "node scripts/validate-lockfile.mjs",
     "sync": "bash scripts/sync-deps.sh",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
@@ -114,7 +115,8 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64"
+            "arm64",
+            "x64"
           ]
         }
       ],

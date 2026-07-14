@@ -42,10 +42,11 @@ No `.env` file is required for normal development. Theme preference is stored in
 | Command | What it does |
 |---------|----------------|
 | `npm run build` | Vite production build → `dist/` (also used by Vercel) |
-| `npm run dist` / `dist:mac` / `dist:win` / `dist:all` | electron-builder packaging |
+| `npm run dist` / `dist:mac` / `dist:win` / `dist:all` | electron-builder packaging (`dist:mac` builds arm64 + x64 DMGs) |
 | `npm run electron:build:mac` / `:win` / `:all` | build + package |
 | `npm run generate-icons` | Icon assets for packaging |
-| `npm run verify:mac` | Post-build mac signature check |
+| `npm run verify:mac` | Post-build mac signature check (all `Benchy.app` under `release/`) |
+| `npm run verify:win` | Post-build Windows installer presence check |
 
 ## Test
 
