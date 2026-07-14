@@ -46,15 +46,14 @@ curl -s -X POST http://127.0.0.1:8765/api/suggest-dish \
 
 ## Pipeline
 
-1. First-pass **scale estimate** from clean isolated colonies → adaptive kernels / area / seed spacing  
+1. Robust **scale estimate** (MAD-trimmed) from clean isolated colonies; multi-scale tiles with neighbor fallback  
 2. Apply user mask (+ inward erosion) → crop to bbox  
-3. Flatten illumination; mask large specular glare only  
-4. Adaptive tophat segmentation + bright-fill for solid fused masses  
-5. Peel fused components; conservative watershed + LoG cross-check on the rest  
-6. Filter individuals; classify yeast vs contaminant  
-7. **Fused clusters**: `floor(area / estimatedColonyArea)` with contour + editable count (no fake markers)
+3. Flatten illumination; bilateral denoise; mask large specular glare only  
+4. **Threshold-stability sweep** — keep only regions that stay colony-like across many thresholds  
+5. Touching mergers: multi-signal **candidate matching** (watershed peaks + LoG + contour concavity); drop ambiguous regions rather than estimate  
+6. Density-adaptive confidence filter + yeast/contaminant HSV classification  
 
-Response includes `individuallyDetected`, `estimatedFromClusters`, `colonies[]`, and `clusters[]`.
+Response: `count`, `individuallyDetected`, `countByType`, `colonies[]`. `clusters[]` / `estimatedFromClusters` are always empty (fused-cluster fallback removed).
 
 Python runtime is **not** bundled in the installer for MVP; install the venv on the machine running Benchy desktop.
 

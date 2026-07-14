@@ -37,9 +37,10 @@ def preprocess(image_bytes: bytes) -> dict:
     flat = gray_raw.astype(np.float32) - background.astype(np.float32) + 128.0
     flat = np.clip(flat, 0, 255).astype(np.uint8)
 
-    den = cv2.bilateralFilter(flat, d=5, sigmaColor=40, sigmaSpace=40)
+    # Slightly stronger bilateral — reduces media-texture false positives on sparse plates
+    den = cv2.bilateralFilter(flat, d=7, sigmaColor=45, sigmaSpace=45)
     # Keep a lightly denoised raw gray for tophat (colony peaks survive better)
-    raw_den = cv2.bilateralFilter(gray_raw, d=5, sigmaColor=35, sigmaSpace=35)
+    raw_den = cv2.bilateralFilter(gray_raw, d=7, sigmaColor=40, sigmaSpace=40)
 
     return {
         "bgr": bgr,

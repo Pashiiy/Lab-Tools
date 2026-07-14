@@ -212,7 +212,8 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
     const plateDots = plate.dots || [];
     setDots(plateDots);
-    setClusters(Array.isArray(plate.clusters) ? plate.clusters : []);
+    // Ignore legacy fused-cluster data from older sessions
+    setClusters([]);
     setHistory([plateDots]);
     setHistoryIndex(0);
     setActiveCategory(plate.activeCategory || 'cat-1');
@@ -363,7 +364,7 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
 
   /** Replace active-plate dots with Auto Count results (one history entry). */
   const applyAutoColonies = useCallback(
-    (colonies, clusterList = []) => {
+    (colonies) => {
       const list = Array.isArray(colonies) ? colonies : [];
       setCategories((prev) => ensureTypeCategories(prev));
       const cats = ensureTypeCategories(categories);
@@ -390,36 +391,12 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
           manuallyEdited: false,
         };
       }).filter(Boolean);
-      const nextClusters = (Array.isArray(clusterList) ? clusterList : []).map((cl, i) => ({
-        id: cl.id || `cluster-${i + 1}`,
-        estimatedCount: Math.max(0, Math.floor(Number(cl.estimatedCount) || 0)),
-        area: cl.area ?? null,
-        contour: Array.isArray(cl.contour) ? cl.contour : [],
-        colonyType:
-          cl.colonyType === 'contaminant' || cl.colonyType === 'uncertain'
-            ? cl.colonyType
-            : 'yeast',
-        manuallyEdited: false,
-      }));
       pushHistory(newDots);
-      setClusters(nextClusters);
+      setClusters([]);
       markDirty();
       return newDots.length;
     },
     [activeCat, categories, dotRadius, pushHistory, markDirty]
-  );
-
-  const setClusterEstimatedCount = useCallback(
-    (clusterId, estimatedCount) => {
-      const n = Math.max(0, Math.floor(Number(estimatedCount) || 0));
-      setClusters((prev) =>
-        prev.map((c) =>
-          c.id === clusterId ? { ...c, estimatedCount: n, manuallyEdited: true } : c
-        )
-      );
-      markDirty();
-    },
-    [markDirty]
   );
 
   const setDotColonyType = useCallback(
@@ -446,16 +423,12 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
   );
 
   const clearAll = useCallback(() => {
-    if (dots.length === 0 && clusters.length === 0) return;
+    if (dots.length === 0) return;
     pushHistory([]);
     setClusters([]);
-  }, [dots, clusters, pushHistory]);
+  }, [dots, pushHistory]);
 
-  const clusterCount = useMemo(
-    () => clusters.reduce((sum, c) => sum + (Number(c.estimatedCount) || 0), 0),
-    [clusters]
-  );
-  const colonyCount = dots.length + clusterCount;
+  const colonyCount = dots.length;
 
   const updateCategoryLabel = useCallback(
     (id, label) => {
@@ -1019,8 +992,6 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     moveDot,
     applyAutoColonies,
     setDotColonyType,
-    setClusterEstimatedCount,
-    clusters,
     clearAll,
     findDotAt,
     undo,
@@ -1029,7 +1000,6 @@ export function useColonyCounter(instanceId, isActive = true, initialState = nul
     canUndo,
     canRedo,
     colonyCount,
-    clusterCount,
     dilutionMode,
     setDilutionMode: handleSetDilutionMode,
     dilutionExponent,

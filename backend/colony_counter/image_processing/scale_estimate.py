@@ -6,6 +6,16 @@ import numpy as np
 
 MIN_CLEAN_SAMPLES = 15
 
+# Conservative default when no trustworthy estimate exists.
+# ~1.5% of the shorter edge, clamped to 8–22px.
+# Chosen because phone photos of standard plates in this app typically show
+# yeast colonies in that band; sparse_2 diagnosis recovered true colonies at
+# ~18px and produced rim/text FPs at ~2.5px. Prefer slightly large over tiny
+# (bias: under-count rather than over-count on dust/rim artifacts).
+_CONSERVATIVE_RADIUS_FRAC = 0.015
+_CONSERVATIVE_RADIUS_MIN = 8.0
+_CONSERVATIVE_RADIUS_MAX = 22.0
+
 
 def estimate_colony_scale(
     gray_raw: np.ndarray,
@@ -16,6 +26,9 @@ def estimate_colony_scale(
     Outlier-resistant size estimate from clean, isolated components.
 
     Returns radius/area plus n_samples and confidence (0–1).
+    Callers that drive detection MUST pass the result through
+    ``resolve_scale_estimate`` before using radius/area — untrusted
+    estimates must not be used directly.
     """
     glare = glare_mask if glare_mask is not None else np.zeros_like(work_mask)
     src = gray_raw
@@ -26,7 +39,7 @@ def estimate_colony_scale(
     tophat = cv2.morphologyEx(src, cv2.MORPH_TOPHAT, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k0, k0)))
     vals = tophat[(work_mask > 0) & (glare == 0)]
     if vals.size == 0:
-        return _fallback(src, work_mask)
+        return conservative_default_scale(src.shape[:2], n_samples=0)
 
     thr = max(float(np.percentile(vals, 90.0)), float(np.median(vals) + 8.0), 6.0)
     binary = ((tophat >= thr) & (work_mask > 0) & (glare == 0)).astype(np.uint8) * 255
@@ -34,7 +47,7 @@ def estimate_colony_scale(
 
     n, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
     if n <= 1:
-        return _fallback(src, work_mask)
+        return conservative_default_scale(src.shape[:2], n_samples=0)
 
     areas = stats[1:, cv2.CC_STAT_AREA].astype(np.float64)
     area_img = float(np.count_nonzero(work_mask))
@@ -82,7 +95,7 @@ def estimate_colony_scale(
         clean_areas.append(area)
 
     if len(radii) < 5:
-        return _fallback(src, work_mask)
+        return conservative_default_scale(src.shape[:2], n_samples=0)
 
     med_r, n_kept_r = _mad_trim_median(np.asarray(radii, dtype=np.float64))
     med_a, n_kept_a = _mad_trim_median(np.asarray(clean_areas, dtype=np.float64))
@@ -101,6 +114,61 @@ def estimate_colony_scale(
     }
 
 
+def conservative_default_scale(shape: tuple[int, ...], n_samples: int = 0) -> dict:
+    """Deliberate default colony size — never a collapsed low-sample estimate."""
+    h = int(shape[0]) if len(shape) > 0 else 512
+    w = int(shape[1]) if len(shape) > 1 else h
+    r = float(
+        np.clip(
+            min(h, w) * _CONSERVATIVE_RADIUS_FRAC,
+            _CONSERVATIVE_RADIUS_MIN,
+            _CONSERVATIVE_RADIUS_MAX,
+        )
+    )
+    a = float(np.pi * r * r)
+    return {
+        "radius": r,
+        "area": a,
+        "diameter": r * 2.0,
+        "n_samples": int(n_samples),
+        "confidence": 0.25,
+        "trustworthy": False,
+        "isDefault": True,
+    }
+
+
+def resolve_scale_estimate(
+    primary: dict | None,
+    candidates: list[dict] | None = None,
+    shape: tuple[int, ...] = (512, 512),
+) -> dict:
+    """
+    Production scale for detection params.
+
+    Prefer: trustworthy primary → any trustworthy neighbor/global →
+    an already-chosen image-level default → conservative default from
+    ``shape``. Never use an untrusted low-sample radius/area
+    (e.g. sparse_2's r=2.5 from 13 dust/rim samples).
+    """
+    if primary and primary.get("trustworthy"):
+        return primary
+
+    pool = [e for e in (candidates or []) if e]
+    trusted = [e for e in pool if e.get("trustworthy")]
+    if trusted:
+        if len(trusted) == 1:
+            return trusted[0]
+        return blend_estimates(trusted)
+
+    # Reuse image-level default so tiles don't recompute from a small crop
+    # (a 200px tile would yield r≈8 and re-admit dust).
+    defaults = [e for e in pool if e.get("isDefault")]
+    if defaults:
+        return defaults[0]
+
+    return conservative_default_scale(shape)
+
+
 def _mad_trim_median(values: np.ndarray, z: float = 2.5) -> tuple[float, int]:
     """Median after rejecting points farther than z * MAD from the median."""
     if values.size == 0:
@@ -117,19 +185,6 @@ def _mad_trim_median(values: np.ndarray, z: float = 2.5) -> tuple[float, int]:
     if keep.size == 0:
         return med, 0
     return float(np.median(keep)), int(keep.size)
-
-
-def _fallback(src: np.ndarray, work_mask: np.ndarray) -> dict:
-    r = max(4.0, min(src.shape) * 0.012)
-    a = float(np.pi * r * r)
-    return {
-        "radius": r,
-        "area": a,
-        "diameter": r * 2.0,
-        "n_samples": 0,
-        "confidence": 0.0,
-        "trustworthy": False,
-    }
 
 
 def scale_params(estimate: dict, scale_factor: float = 1.0) -> dict:
@@ -167,10 +222,15 @@ def scale_params(estimate: dict, scale_factor: float = 1.0) -> dict:
 
 
 def blend_estimates(estimates: list[dict], weights: list[float] | None = None) -> dict:
-    """Weighted blend of scale estimates (for neighbor / coarse-fine reconcile)."""
-    usable = [e for e in estimates if e and e.get("n_samples", 0) > 0]
+    """Weighted blend of scale estimates (for neighbor / coarse-fine reconcile).
+
+    Prefer trustworthy inputs when any exist so untrusted dust-scale samples
+    cannot pull a good estimate toward r≈2–3px.
+    """
+    trusted = [e for e in estimates if e and e.get("trustworthy")]
+    usable = trusted if trusted else [e for e in estimates if e and e.get("n_samples", 0) > 0]
     if not usable:
-        return estimates[0] if estimates else _fallback(np.zeros((64, 64), np.uint8), np.ones((64, 64), np.uint8))
+        return conservative_default_scale((64, 64))
     if weights is None:
         weights = [max(0.1, float(e.get("confidence") or 0.1) * max(1, e["n_samples"])) for e in usable]
     w = np.asarray(weights[: len(usable)], dtype=np.float64)

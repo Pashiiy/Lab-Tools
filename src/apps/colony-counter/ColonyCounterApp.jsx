@@ -74,8 +74,6 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
     canUndo,
     canRedo,
     colonyCount,
-    clusters,
-    setClusterEstimatedCount,
     dilutionMode,
     setDilutionMode,
     dilutionExponent,
@@ -172,7 +170,7 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
     setAutoCountError(null);
     try {
       const result = await requestAutoCount(image.src, currentMask, image.name || 'plate.png');
-      applyAutoColonies(result.colonies || [], result.clusters || []);
+      applyAutoColonies(result.colonies || []);
       setAutoCountByType(result.countByType || null);
       setAutoCountDone(true);
       setInteractionMode('mark');
@@ -201,7 +199,7 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
         setAutoCountError('Debug run returned no stages.');
         return;
       }
-      applyAutoColonies(result.colonies || [], result.clusters || []);
+      applyAutoColonies(result.colonies || []);
       setAutoCountByType(result.countByType || null);
       setAutoCountDone(true);
       setDebugStages(result.stages);
@@ -569,8 +567,6 @@ export default function ColonyCounterApp({ instanceId, isActive, initialState = 
                 draftPolygon={draftPolygon}
                 onMaskChange={setCurrentMask}
                 onDraftPolygonChange={setDraftPolygon}
-                clusters={clusters}
-                onEditClusterCount={setClusterEstimatedCount}
               />
             </div>
           </>

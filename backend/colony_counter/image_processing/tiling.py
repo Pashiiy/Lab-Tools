@@ -1,7 +1,7 @@
 """
-Multi-scale tiling + ensemble parameter detection.
+Multi-scale tiling + stability detection + candidate matching.
 
-Accuracy over speed: coarse+fine tiles, 3 param brackets per tile, vote reconcile.
+No fused-cluster / area estimation. Ambiguous merges are dropped (under-count).
 """
 from __future__ import annotations
 
@@ -11,19 +11,11 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from .scale_estimate import (
-    MIN_CLEAN_SAMPLES,
-    blend_estimates,
-    estimate_colony_scale,
-    scale_params,
-)
-from .segmentation import segment_colonies
-from .watershed import separate_touching
-from .filtering import filter_regions
+from .scale_estimate import estimate_colony_scale, resolve_scale_estimate, scale_params
+from .stability import stability_detect
+from .candidates import extract_component_mask, split_merged_region
 from .classification import classify_colonies
 from .confidence import score_and_threshold
-
-ENSEMBLE_SCALES = (0.8, 1.0, 1.25)
 
 
 @dataclass
@@ -34,7 +26,7 @@ class Tile:
     y1: int
     cx: float
     cy: float
-    level: str  # "coarse" | "fine"
+    level: str
 
 
 def make_tiles(work_mask: np.ndarray, rough_radius: float, level: str) -> list[Tile]:
@@ -64,79 +56,21 @@ def make_tiles(work_mask: np.ndarray, rough_radius: float, level: str) -> list[T
     return tiles
 
 
-def _detect_once(
-    g, gr, hs, gl, wm, params, ox: int, oy: int
-) -> tuple[list[dict], np.ndarray, np.ndarray, np.ndarray, dict]:
-    binary, bright_fill = segment_colonies(g, gl, wm, gray_raw=gr, params=params)
-    labels, ws_meta = separate_touching(binary, wm, params=params, gray_raw=gr)
-    pre = ws_meta.get("pre_cluster_mask")
-    if bright_fill is not None and np.any(bright_fill):
-        pre = bright_fill if pre is None else cv2.bitwise_or(pre, bright_fill)
-        labels[bright_fill > 0] = 0
-    regions, rejected_large = filter_regions(labels, wm, gl, params=params)
-    classified = classify_colonies(regions, hs)
-    for r, c in zip(regions, classified):
-        if "mask" in r:
-            c["mask"] = r["mask"]
-    scored = score_and_threshold(classified, g, params=params)
-    colonies = []
-    for c in scored:
-        colonies.append(
-            {
-                "x": float(c["x"] + ox),
-                "y": float(c["y"] + oy),
-                "radius": float(c["radius"]),
-                "area": float(c["area"]),
-                "circularity": c.get("circularity"),
-                "confidence": float(c.get("confidence") or 0),
-                "colonyType": c.get("colonyType") or "uncertain",
-            }
-        )
-    disagree = ws_meta.get("disagreement_mask")
-    return colonies, binary, pre if pre is not None else np.zeros_like(binary), rejected_large, {
-        "seed_count": ws_meta.get("seed_count", 0),
-        "log_count": len(ws_meta.get("log_blobs") or []),
-        "disagreement": disagree,
-    }
-
-
-def _vote_colonies(runs: list[list[dict]]) -> tuple[list[dict], float]:
-    """
-    Keep detections that appear in >=2 ensemble runs (or sole run if only one).
-    Returns (colonies, disagreement_ratio 0–1).
-    Under-count bias: single-run detections need high confidence to survive.
-    """
-    if not runs:
-        return [], 1.0
-    if len(runs) == 1:
-        return runs[0], 0.0
-
-    buckets: dict[tuple[int, int], list[tuple[int, dict]]] = {}
-    for ri, run in enumerate(runs):
-        for c in run:
-            key = (int(round(c["x"] / 3.0)), int(round(c["y"] / 3.0)))
-            buckets.setdefault(key, []).append((ri, c))
-
-    kept: list[dict] = []
-    single_vote = 0
-    for items in buckets.values():
-        runs_hit = {ri for ri, _ in items}
-        best = max((c for _ri, c in items), key=lambda c: c["confidence"])
-        if len(runs_hit) >= 2:
-            best = dict(best)
-            best["confidence"] = min(1.0, best["confidence"] + 0.08)
-            best["ensemble_votes"] = len(runs_hit)
-            kept.append(best)
-        else:
-            single_vote += 1
-            if best["confidence"] >= 0.72:
-                best = dict(best)
-                best["ensemble_votes"] = 1
-                kept.append(best)
-
-    total = max(1, len(buckets))
-    disagreement = float(single_vote) / float(total)
-    return kept, disagreement
+def _infer_density_mode(est: dict, work_mask: np.ndarray, n_stable_hint: int = 0) -> str:
+    """Rough density class for filter strictness — sparse gets more conservative."""
+    area = float(np.count_nonzero(work_mask))
+    colony_a = max(float(est.get("area") or 50.0), 1.0)
+    # Expected capacity of the mask if packed
+    capacity = max(1.0, area / (colony_a * 4.0))
+    n = max(int(est.get("n_samples") or 0), n_stable_hint)
+    # Use samples vs capacity: low fill → sparse
+    fill = n / capacity
+    # Dense by count first — high-n plates can have low fill vs packing capacity
+    if n > 400 or fill > 0.35:
+        return "dense"
+    if fill < 0.08 or n < 40:
+        return "sparse"
+    return "moderate"
 
 
 def _process_tile(
@@ -148,91 +82,114 @@ def _process_tile(
     work_mask: np.ndarray,
     global_est: dict,
     neighbor_ests: list[dict],
+    global_density: str,
+    global_fill: float = 0.25,
 ) -> dict:
     x0, y0, x1, y1 = tile.x0, tile.y0, tile.x1, tile.y1
-    g = gray[y0:y1, x0:x1]
     gr = gray_raw[y0:y1, x0:x1]
+    g = gray[y0:y1, x0:x1]
     hs = hsv[y0:y1, x0:x1]
     gl = glare[y0:y1, x0:x1]
     wm = work_mask[y0:y1, x0:x1]
 
     local = estimate_colony_scale(gr, wm, gl)
-    if local.get("trustworthy"):
-        est = local
-    elif neighbor_ests:
-        est = blend_estimates([global_est, local] + neighbor_ests)
-    elif global_est.get("trustworthy") or global_est.get("n_samples", 0) >= 8:
-        est = blend_estimates([global_est, local])
-    else:
-        # Sparse-safe default
-        r = float(np.clip(global_est.get("radius") or local.get("radius") or 8.0, 4.0, 14.0))
-        est = {
-            "radius": r,
-            "area": float(np.pi * r * r),
-            "diameter": r * 2.0,
-            "n_samples": local.get("n_samples", 0),
-            "confidence": 0.3,
-            "trustworthy": False,
-        }
+    # Never consume untrusted radii (e.g. r=2.5 from rim dust) — resolve falls
+    # back to trustworthy neighbors/global, else a conservative default.
+    est = resolve_scale_estimate(
+        local,
+        candidates=[global_est] + list(neighbor_ests or []),
+        shape=gr.shape[:2],
+    )
 
-    run_lists = []
-    binary_u = np.zeros_like(wm)
-    pre_u = np.zeros_like(wm)
-    rej_u = np.zeros_like(wm)
-    meta_flags = []
+    density = global_density
+    # Locally sparse pocket inside a dense plate → still be a bit careful
+    local_density = _infer_density_mode(est, wm)
+    if local_density == "sparse" and density != "sparse":
+        density = "moderate"  # don't go full sparse filters on a small empty tile of a dense dish
 
-    for sf in ENSEMBLE_SCALES:
-        params = scale_params(est, scale_factor=sf)
-        cols, binary, pre, rej, meta = _detect_once(g, gr, hs, gl, wm, params, x0, y0)
-        run_lists.append(cols)
-        binary_u = cv2.bitwise_or(binary_u, binary)
-        if pre is not None:
-            pre_u = cv2.bitwise_or(pre_u, pre)
-        if rej is not None:
-            rej_u = cv2.bitwise_or(rej_u, rej)
-        meta_flags.append(meta)
+    params = scale_params(est)
+    params["density_mode"] = density
+    params["fill_ratio"] = float(global_fill)
+    params["max_area_keep"] = float(est["area"] * 80.0)
 
-    colonies, disagreement = _vote_colonies(run_lists)
+    stable, binary_u, morph, stab_map = stability_detect(gr, gl, wm, params=params)
 
-    # LoG vs watershed disagreement from center scale run
-    log_ws_disagree = False
-    for m in meta_flags:
-        sc, lc = m.get("seed_count", 0), m.get("log_count", 0)
-        if sc > 0 and lc > 0 and max(sc, lc) / max(min(sc, lc), 1) >= 2.0:
-            log_ws_disagree = True
-        if m.get("disagreement") is not None and np.any(m["disagreement"]):
-            d = m["disagreement"]
-            # map into tile-sized already
-            if d.shape == pre_u.shape:
-                pre_u = cv2.bitwise_or(pre_u, d)
+    # Build binary for component extraction around stable centers
+    regions_out: list[dict] = []
+    for s in stable:
+        sx, sy = float(s["x"]), float(s["y"])
+        if s.get("needs_split"):
+            comp = extract_component_mask(binary_u, sx, sy, search_r=max(s["radius"] * 2.5, 8.0))
+            if comp is None:
+                continue
+            parts = split_merged_region(comp, gr, params=params)
+            for part in parts:
+                regions_out.append(part)
+        else:
+            regions_out.append(
+                {
+                    "x": sx,
+                    "y": sy,
+                    "radius": float(s["radius"]),
+                    "area": float(s["area"]),
+                    "circularity": float(s.get("circularity") or 0.7),
+                    "solidity": float(s.get("solidity") or 0.8),
+                    "stability": float(s.get("stability") or 0),
+                }
+            )
+
+    # Build tiny masks for classification color sampling (disk approx)
+    for r in regions_out:
+        mask = np.zeros(wm.shape, dtype=np.uint8)
+        rad = max(2, int(round(r["radius"])))
+        cv2.circle(mask, (int(round(r["x"])), int(round(r["y"]))), rad, 255, -1)
+        mask[wm == 0] = 0
+        r["mask"] = mask
+
+    classified = classify_colonies(regions_out, hs)
+    for r, c in zip(regions_out, classified):
+        if "mask" in r:
+            c["mask"] = r["mask"]
+        c["stability"] = r.get("stability")
+        c["solidity"] = r.get("solidity")
+
+    scored = score_and_threshold(classified, g, params={**params, "density_mode": density})
+
+    colonies = []
+    for c in scored:
+        colonies.append(
+            {
+                "x": float(c["x"] + x0),
+                "y": float(c["y"] + y0),
+                "radius": float(c["radius"]),
+                "area": float(c["area"]),
+                "circularity": c.get("circularity"),
+                "confidence": float(c.get("confidence") or 0),
+                "colonyType": c.get("colonyType") or "uncertain",
+            }
+        )
 
     return {
         "tile": tile,
         "estimate": est,
         "colonies": colonies,
-        "disagreement": disagreement,
-        "log_ws_disagree": log_ws_disagree,
         "binary": binary_u,
-        "pre_cluster": pre_u,
-        "rejected_large": rej_u,
-        "force_cluster": disagreement >= 0.45 or log_ws_disagree,
+        "morph": morph,
+        "stability_map": stab_map,
     }
 
 
 def reconcile_colonies(colonies: list[dict]) -> list[dict]:
     if not colonies:
         return []
-    ordered = sorted(
-        colonies,
-        key=lambda c: (-int(c.get("ensemble_votes") or 1), -float(c.get("confidence") or 0)),
-    )
+    ordered = sorted(colonies, key=lambda c: -float(c.get("confidence") or 0))
     kept: list[dict] = []
     for c in ordered:
         r = max(2.0, float(c.get("radius") or 4.0))
         ok = True
         for k in kept:
             kr = max(2.0, float(k.get("radius") or 4.0))
-            lim = 0.7 * (r + kr) / 2.0
+            lim = 0.75 * (r + kr) / 2.0
             if (c["x"] - k["x"]) ** 2 + (c["y"] - k["y"]) ** 2 < lim * lim:
                 ok = False
                 break
@@ -250,21 +207,25 @@ def run_tiled_detection(
     glare: np.ndarray,
     work_mask: np.ndarray,
     max_workers: int = 4,
-    stage_cb=None,
 ) -> dict:
-    global_est = estimate_colony_scale(gray_raw, work_mask, glare)
-    if stage_cb:
-        stage_cb("scale", f"Global scale r={global_est['radius']:.1f} n={global_est['n_samples']}")
+    raw_global = estimate_colony_scale(gray_raw, work_mask, glare)
+    global_est = resolve_scale_estimate(raw_global, candidates=[], shape=gray_raw.shape[:2])
+    global_density = _infer_density_mode(global_est, work_mask)
+    colony_a = max(float(global_est.get("area") or 50.0), 1.0)
+    capacity = max(1.0, float(np.count_nonzero(work_mask)) / (colony_a * 4.0))
+    # Prefer raw sample count for fill (default scale has n_samples=0)
+    n_for_fill = max(int(raw_global.get("n_samples") or 0), int(global_est.get("n_samples") or 0))
+    global_fill = float(n_for_fill / capacity) if capacity > 0 else 0.0
 
     coarse_tiles = make_tiles(work_mask, global_est["radius"], "coarse")
     fine_tiles = make_tiles(work_mask, global_est["radius"], "fine")
 
-    # Coarse pass first (sequential estimates for neighbor blending)
-    coarse_results = []
-    for t in coarse_tiles:
-        coarse_results.append(
-            _process_tile(t, gray, gray_raw, hsv, glare, work_mask, global_est, [])
+    coarse_results = [
+        _process_tile(
+            t, gray, gray_raw, hsv, glare, work_mask, global_est, [], global_density, global_fill
         )
+        for t in coarse_tiles
+    ]
 
     def nearest_coarse_ests(tile: Tile, k: int = 3) -> list[dict]:
         scored = sorted(
@@ -273,7 +234,6 @@ def run_tiled_detection(
         )
         return [r["estimate"] for r in scored[:k]]
 
-    # Fine pass parallel
     fine_results = []
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futs = {
@@ -287,6 +247,8 @@ def run_tiled_detection(
                 work_mask,
                 global_est,
                 nearest_coarse_ests(t),
+                global_density,
+                global_fill,
             ): t
             for t in fine_tiles
         }
@@ -294,59 +256,33 @@ def run_tiled_detection(
             fine_results.append(fut.result())
 
     all_cols: list[dict] = []
-    pre = np.zeros(work_mask.shape, dtype=np.uint8)
-    rej = np.zeros(work_mask.shape, dtype=np.uint8)
     binary = np.zeros(work_mask.shape, dtype=np.uint8)
-    force_cluster_mask = np.zeros(work_mask.shape, dtype=np.uint8)
-    param_at_tiles = []
+    morph = np.zeros(work_mask.shape, dtype=np.uint8)
+    stab = np.zeros(work_mask.shape, dtype=np.uint8)
 
     for r in coarse_results + fine_results:
         all_cols.extend(r["colonies"])
         y0, y1, x0, x1 = r["tile"].y0, r["tile"].y1, r["tile"].x0, r["tile"].x1
-        tb = r["binary"]
-        if tb.shape == (y1 - y0, x1 - x0):
-            binary[y0:y1, x0:x1] = cv2.bitwise_or(binary[y0:y1, x0:x1], tb)
-            pre[y0:y1, x0:x1] = cv2.bitwise_or(pre[y0:y1, x0:x1], r["pre_cluster"])
-            rej[y0:y1, x0:x1] = cv2.bitwise_or(rej[y0:y1, x0:x1], r["rejected_large"])
-            if r.get("force_cluster"):
-                # Only large-vs-local components, not the whole tile binary
-                est_a = float(r["estimate"].get("area") or 50.0)
-                n0, lab0, st0, _ = cv2.connectedComponentsWithStats(tb, connectivity=8)
-                tile_force = np.zeros_like(tb)
-                for i in range(1, n0):
-                    area = int(st0[i, cv2.CC_STAT_AREA])
-                    if area >= est_a * 6.0:
-                        tile_force[lab0 == i] = 255
-                if np.any(tile_force):
-                    force_cluster_mask[y0:y1, x0:x1] = cv2.bitwise_or(
-                        force_cluster_mask[y0:y1, x0:x1], tile_force
-                    )
-        param_at_tiles.append((r["tile"], scale_params(r["estimate"]), r["estimate"]))
+        for src, dst in (
+            (r["binary"], binary),
+            (r["morph"], morph),
+            (r["stability_map"], stab),
+        ):
+            if src is not None and src.shape == (y1 - y0, x1 - x0):
+                if dst is stab:
+                    dst[y0:y1, x0:x1] = np.maximum(dst[y0:y1, x0:x1], src)
+                else:
+                    dst[y0:y1, x0:x1] = cv2.bitwise_or(dst[y0:y1, x0:x1], src)
 
     colonies = reconcile_colonies(all_cols)
-
-    def local_est_area(x: float, y: float) -> float:
-        best = float(global_est["area"])
-        best_d = 1e18
-        for tile, _params, est in param_at_tiles:
-            d = (x - tile.cx) ** 2 + (y - tile.cy) ** 2
-            if d < best_d:
-                best_d = d
-                best = float(est["area"])
-        return best
-
-    # Merge force-cluster regions into pre_cluster
-    pre = cv2.bitwise_or(pre, force_cluster_mask)
 
     return {
         "colonies": colonies,
         "binary": binary,
-        "pre_cluster": pre,
-        "rejected_large": rej,
+        "morph": morph,
+        "stability_map": stab,
         "rough_scale": global_est,
         "rough_params": scale_params(global_est),
-        "local_est_area_fn": local_est_area,
+        "density_mode": global_density,
         "tile_count": len(coarse_tiles) + len(fine_tiles),
-        "tile_params": param_at_tiles,
-        "force_cluster_mask": force_cluster_mask,
     }

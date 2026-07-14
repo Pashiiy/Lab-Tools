@@ -119,7 +119,7 @@ def evaluate(fixture: dict) -> dict:
         "gt": gt,
         "auto": auto,
         "indiv": result.get("individuallyDetected"),
-        "clusters": result.get("estimatedFromClusters"),
+        "clusters": result.get("estimatedFromClusters") or 0,
         "err": err,
         "pct": pct,
         "over": over,
