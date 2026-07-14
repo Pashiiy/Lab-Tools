@@ -26,7 +26,7 @@ import './shell.css';
 
 export default function AppShell() {
   const { theme, setTheme, toggleTheme } = useGlobalTheme();
-  const toolPrefs = useToolPreferences();
+  const { favorites, recent, toggleFavorite, recordRecent, isFavorite } = useToolPreferences();
   const [notepadOpen, setNotepadOpen] = useState(false);
   const [strainOpen, setStrainOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -77,8 +77,8 @@ export default function AppShell() {
   );
 
   const handleToolOpened = useCallback(
-    (toolId) => toolPrefs.recordRecent(toolId),
-    [toolPrefs.recordRecent]
+    (toolId) => recordRecent(toolId),
+    [recordRecent]
   );
 
   const tabManager = useTabManager({ onToolOpened: handleToolOpened });
@@ -183,10 +183,10 @@ export default function AppShell() {
           {view === 'home' && (
             <HomePage
               onOpenTool={openTool}
-              favorites={toolPrefs.favorites}
-              recent={toolPrefs.recent}
-              onToggleFavorite={toolPrefs.toggleFavorite}
-              isFavorite={toolPrefs.isFavorite}
+              favorites={favorites}
+              recent={recent}
+              onToggleFavorite={toggleFavorite}
+              isFavorite={isFavorite}
               recentProjects={session.recentProjects}
               onOpenRecentProject={session.openRecentProject}
               onRenameRecentProject={session.renameRecent}

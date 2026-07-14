@@ -52,7 +52,8 @@ jobs:
         run: npm run build
 
   # Cross-platform colony sidecar venv paths (Scripts/ on Windows, bin/ on Unix).
-  # Does not package the app — only setup:colony + sidecar health.
+  # Path resolution lives in electron/colonyVenv.cjs — shared by setup:colony,
+  # Electron spawn, and verify:colony-venv. Do not hardcode bin/ or Scripts/ here.
   colony-venv:
     name: Colony venv (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -86,5 +87,8 @@ jobs:
         env:
           HUSKY: '0'
 
+      # Uses electron/colonyVenv.cjs (process.platform → bin/ vs Scripts/) for
+      # clean .venv create, pip install, and sidecar /health — same helper as
+      # local npm run setup:colony and Electron spawn.
       - name: Verify colony venv + sidecar
         run: npm run verify:colony-venv

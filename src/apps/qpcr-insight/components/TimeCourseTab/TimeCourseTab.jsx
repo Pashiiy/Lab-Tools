@@ -275,7 +275,6 @@ export default function TimeCourseTab({ timeCourseData, referenceGene }) {
         hasDilutionData={hasDilutionData}
         t0Timepoint={t0Timepoint}
         timepoints={timepoints}
-        chartView={chartView}
         ratioNumerator={ratioNumerator}
         ratioDenominator={ratioDenominator}
         showRatioRows={showRatioRows}

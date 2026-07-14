@@ -164,7 +164,7 @@ export function buildRatioParity(reportA, reportB, tolerancePct = 1) {
 }
 
 /** Plain-text structured report for copy/paste into a lab notebook or issue. */
-export function formatReportText({ title, fiji, app, report, ratio }) {
+export function formatReportText({ title, report, ratio }) {
   const lines = [];
   const f = (n, d = 4) => (n == null || !Number.isFinite(n) ? '—' : Number(n.toFixed(d)));
   lines.push(`=== Fiji ↔ App Parity Report${title ? `: ${title}` : ''} ===`);

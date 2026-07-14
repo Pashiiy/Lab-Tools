@@ -142,7 +142,10 @@ async function testMacIntelPathsIfPossible() {
   // Both Apple Silicon and Intel Mac use the Unix bin/ layout — only the
   // Python arch differs. Path helper is identical for darwin regardless of arch.
   const arm = resolveVenvPaths(BACKEND, 'darwin');
-  assert(arm.pythonRel.includes(join('bin', 'python')), 'darwin uses bin/python');
+  // Use a posix segment check — path.join() on Windows would produce "bin\\python"
+  // and falsely fail this cross-platform assert on windows-latest.
+  assert(arm.pythonRel === '.venv/bin/python', `darwin uses bin/python, got ${arm.pythonRel}`);
+  assert(arm.pipRel === '.venv/bin/pip', `darwin uses bin/pip, got ${arm.pipRel}`);
   console.log(`  ✓ darwin layout (arm64 and x64 Macs): ${arm.pythonRel}`);
   if (process.platform === 'darwin' && process.arch === 'arm64') {
     // Optional: confirm Rosetta can run an x86_64 python for a separate venv smoke.

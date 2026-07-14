@@ -172,8 +172,9 @@ export default function ChartPanel({
   const panelRef = useRef(null);
   const [chartType, setChartType] = useState('pie');
   const [fadeKey, setFadeKey] = useState(0);
-  const { theme } = useGlobalTheme();
-  const chartTheme = useMemo(() => getEndpointChartTheme(), [theme]);
+  // Subscribe so theme flips re-render and re-read CSS chart tokens.
+  useGlobalTheme();
+  const chartTheme = getEndpointChartTheme();
 
   const totalClassified = useMemo(
     () => classifiedCounts.reduce((sum, entry) => sum + entry.count, 0),

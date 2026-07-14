@@ -232,10 +232,10 @@ export default function ParityAudit({ rois = [], fijiParityMode = true, onFijiPa
   const copyReport = async () => {
     if (!reportA) return;
     const parts = [
-      formatReportText({ title: roiA?.displayName, fiji: fijiFrom(fijiA), app: appA, report: reportA }),
+      formatReportText({ title: roiA?.displayName, report: reportA }),
     ];
     if (reportB) {
-      parts.push('', formatReportText({ title: roiB?.displayName, fiji: fijiFrom(fijiB), app: appB, report: reportB, ratio }));
+      parts.push('', formatReportText({ title: roiB?.displayName, report: reportB, ratio }));
     }
     try {
       await navigator.clipboard.writeText(parts.join('\n'));

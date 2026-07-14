@@ -26,7 +26,6 @@ export default function Sidebar({
   roiTemplate,
   pairCount,
   completePairCount,
-  totalCompletePairs,
   strainName,
   description,
   onAddGel,
