@@ -49,11 +49,12 @@
 }
 
 .shell-sidebar__brand-mark {
-  width: 8px;
-  height: 8px;
-  border-radius: 1px;
-  background: var(--lt-accent);
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
   flex-shrink: 0;
+  display: block;
+  object-fit: contain;
 }
 
 .shell-sidebar__brand-text {
@@ -315,10 +316,11 @@ html[data-theme='light'] .shell-sidebar__brand-name {
 }
 
 .shell-topbar__brand-mark {
-  width: 7px;
-  height: 7px;
-  border-radius: 1px;
-  background: var(--lt-accent);
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: block;
+  object-fit: contain;
 }
 
 .shell-topbar__brand-name {

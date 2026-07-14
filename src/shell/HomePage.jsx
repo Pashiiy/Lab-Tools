@@ -392,7 +392,17 @@ export default function HomePage({
 
       <header className="home__welcome home-animate" style={{ '--stagger': 0 }}>
         <p className="home__greeting">{getGreeting()}</p>
-        <h1 className="home__title">{APP_NAME}</h1>
+        <div className="home__title-row">
+          <img
+            className="home__logo"
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt=""
+            width={40}
+            height={40}
+            aria-hidden
+          />
+          <h1 className="home__title">{APP_NAME}</h1>
+        </div>
         <p className="home__subtitle">{APP_TAGLINE}</p>
       </header>
 

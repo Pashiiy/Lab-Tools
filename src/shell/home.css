@@ -65,6 +65,21 @@ html[data-theme='dark'] .home__ambient {
   color: var(--lt-accent);
 }
 
+.home__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: block;
+  box-shadow: var(--lt-shadow-2);
+}
+
 .home__title {
   margin: 0;
   font-size: 1.625rem;

@@ -47,7 +47,14 @@ export default function Sidebar({
   return (
     <aside className="shell-sidebar" aria-label="Application navigation">
       <button type="button" className="shell-sidebar__brand" onClick={onGoHome}>
-        <span className="shell-sidebar__brand-mark" aria-hidden />
+        <img
+          className="shell-sidebar__brand-mark"
+          src={`${import.meta.env.BASE_URL}logo.svg`}
+          alt=""
+          width={22}
+          height={22}
+          aria-hidden
+        />
         <div className="shell-sidebar__brand-text">
           <span className="shell-sidebar__brand-name">{APP_NAME}</span>
           <span className="shell-sidebar__brand-sub">Bloom Lab</span>

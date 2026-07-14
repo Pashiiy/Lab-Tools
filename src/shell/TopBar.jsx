@@ -66,7 +66,14 @@ export default function TopBar({
       <div className="shell-topbar__left">
         {isHome ? (
           <div className="shell-topbar__brand">
-            <span className="shell-topbar__brand-mark" aria-hidden />
+            <img
+              className="shell-topbar__brand-mark"
+              src={`${import.meta.env.BASE_URL}logo.svg`}
+              alt=""
+              width={18}
+              height={18}
+              aria-hidden
+            />
             <span className="shell-topbar__brand-name">{APP_NAME}</span>
           </div>
         ) : (
