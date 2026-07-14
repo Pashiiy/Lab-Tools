@@ -6,18 +6,28 @@ Classical OpenCV colony detection for Benchy. Runs as a local FastAPI service, s
 
 ## Setup
 
+From the Benchy repo root (recommended — works on macOS, Linux, and Windows):
+
+```bash
+npm run setup:colony
+```
+
+Manual:
+
 ```bash
 cd backend/colony_counter
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python3 -m venv .venv          # Windows: python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+# Windows without activate: .venv\Scripts\pip.exe install -r requirements.txt
 ```
 
 ## Standalone (debug)
 
 ```bash
-uvicorn main:app --host 127.0.0.1 --port 8765
-# or: npm run colony-api
+npm run colony-api
+# or: .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8765
+# Windows: .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8765
 ```
 
 Health: `GET http://127.0.0.1:8765/health`
@@ -60,9 +70,9 @@ Python runtime is **not** bundled in the installer for MVP; install the venv on 
 ## Accuracy harness
 
 ```bash
-cd backend/colony_counter
-.venv/bin/python -m tests.accuracy_harness
-# or from repo root: npm run test:colony-accuracy
+npm run test:colony-accuracy
+# or: cd backend/colony_counter && .venv/bin/python -m tests.accuracy_harness
+# Windows: .venv\Scripts\python.exe -m tests.accuracy_harness
 ```
 
 Add manually counted plates under `tests/fixtures/<name>/` (see `tests/fixtures/README.md`). Without real GT, synthetic smoke cases are generated under `_synthetic/`.

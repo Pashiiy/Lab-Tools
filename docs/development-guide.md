@@ -17,14 +17,27 @@ npm install
 
 ### Colony Auto Count (desktop)
 
+Cross-platform (recommended) — creates `.venv` with the correct `bin/` (macOS/Linux) or `Scripts/` (Windows) layout and installs deps:
+
 ```bash
-cd backend/colony_counter
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+npm run setup:colony
 ```
 
-Electron starts this service automatically. Standalone: `npm run colony-api` then `curl` as in `backend/colony_counter/README.md`.
+Manual equivalent:
+
+```bash
+# macOS / Linux
+cd backend/colony_counter
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# Windows (PowerShell / cmd)
+cd backend\colony_counter
+python -m venv .venv
+.venv\Scripts\pip.exe install -r requirements.txt
+```
+
+Electron starts this service automatically (and checks that `uvicorn` is importable before spawn). Standalone: `npm run colony-api` then `curl` as in `backend/colony_counter/README.md`.
 
 No `.env` file is required for normal development. Theme preference is stored in `localStorage` (`lab-tools-theme`).
 

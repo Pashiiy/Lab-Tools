@@ -1,6 +1,7 @@
 /**
  * Local FastAPI colony-counter service lifecycle for Electron.
- * Uses backend/colony_counter/.venv when present, else system python3/python.
+ * Uses backend/colony_counter/.venv when present (platform-correct Scripts/ or bin/),
+ * else system python — after verifying required packages import.
  */
 const { spawn } = require('child_process');
 const { app } = require('electron');
@@ -8,20 +9,18 @@ const fs = require('fs');
 const http = require('http');
 const net = require('net');
 const path = require('path');
+const {
+  resolvePythonBin,
+  verifyPythonEnvironment,
+  missingDepsError,
+  getSetupCommand,
+} = require('./colonyVenv.cjs');
 
 function getBackendDir() {
   if (app?.isPackaged) {
     return path.join(process.resourcesPath, 'colony_counter');
   }
   return path.join(__dirname, '../backend/colony_counter');
-}
-
-function getPythonBin(backendDir) {
-  const venvUnix = path.join(backendDir, '.venv', 'bin', 'python');
-  const venvWin = path.join(backendDir, '.venv', 'Scripts', 'python.exe');
-  if (fs.existsSync(venvUnix)) return venvUnix;
-  if (fs.existsSync(venvWin)) return venvWin;
-  return process.platform === 'win32' ? 'python' : 'python3';
 }
 
 let child = null;
@@ -97,7 +96,12 @@ async function ensureColonyService() {
       );
     }
 
-    const python = getPythonBin(backendDir);
+    const python = resolvePythonBin(backendDir);
+    const preflight = await verifyPythonEnvironment(python);
+    if (!preflight.ok) {
+      throw new Error(missingDepsError(backendDir, preflight.reason));
+    }
+
     const p = await findFreePort();
     const args = [
       '-m',
@@ -118,23 +122,34 @@ async function ensureColonyService() {
     });
 
     let stderrBuf = '';
+    let stdoutBuf = '';
+    let exitCode = null;
+    child.stdout.on('data', (d) => {
+      stdoutBuf += d.toString();
+      if (stdoutBuf.length > 2000) stdoutBuf = stdoutBuf.slice(-1000);
+    });
     child.stderr.on('data', (d) => {
       stderrBuf += d.toString();
       if (stderrBuf.length > 4000) stderrBuf = stderrBuf.slice(-2000);
     });
-    child.on('exit', () => {
+    child.on('error', (err) => {
+      stderrBuf += `\nspawn error: ${err.message}`;
+    });
+    child.on('exit', (code) => {
+      exitCode = code;
       child = null;
       port = null;
     });
 
-    const ok = await waitForHealth(p);
+    const ok = await waitForHealth(p, 60);
     if (!ok) {
-      const hint = stderrBuf.trim() || 'uvicorn failed to start';
+      const hint =
+        [stderrBuf.trim(), stdoutBuf.trim()].filter(Boolean).join('\n') ||
+        `uvicorn failed to start (exit=${exitCode ?? 'still running'})`;
       stopColonyService();
       throw new Error(
-        `Colony Auto Count service failed to start. Install deps: ` +
-          `cd backend/colony_counter && python3 -m venv .venv && ` +
-          `.venv/bin/pip install -r requirements.txt\n\n${hint}`
+        `Colony Auto Count service failed to start.\n\n` +
+          `${getSetupCommand(backendDir)}\n\n${hint}`
       );
     }
 

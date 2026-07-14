@@ -50,3 +50,41 @@ jobs:
 
       - name: Build renderer (no packaging)
         run: npm run build
+
+  # Cross-platform colony sidecar venv paths (Scripts/ on Windows, bin/ on Unix).
+  # Does not package the app — only setup:colony + sidecar health.
+  colony-venv:
+    name: Colony venv (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pin npm to packageManager version
+        shell: bash
+        run: |
+          NPM_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")"
+          npm i -g "npm@${NPM_VERSION}"
+
+      - name: Install npm dependencies
+        run: npm ci
+        env:
+          HUSKY: '0'
+
+      - name: Verify colony venv + sidecar
+        run: npm run verify:colony-venv
