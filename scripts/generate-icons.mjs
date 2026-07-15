@@ -2,7 +2,7 @@
  * Rasterize public/logo.svg into Electron + PWA icon assets.
  * Requires: npm install (sharp is a devDependency)
  */
-import { mkdirSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -44,7 +44,11 @@ async function main() {
     pngBuffers[64],
     pngBuffers[32],
   ]);
-  writeFileSync(join(publicDir, 'icon.ico'), icoBuffer);
+  const icoPath = join(publicDir, 'icon.ico');
+  writeFileSync(icoPath, icoBuffer);
+  if (!existsSync(icoPath) || icoBuffer.length < 100) {
+    throw new Error(`Failed to write public/icon.ico (${icoBuffer.length} bytes)`);
+  }
 
   // macOS ICNS via iconutil
   const iconsetDir = join(publicDir, 'LabTools.iconset');

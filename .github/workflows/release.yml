@@ -74,6 +74,17 @@ jobs:
       - name: Freeze Colony Auto Count sidecar (x64)
         run: npm run build:colony-backend -- --arch x64
 
+      # Icons are gitignored — must regenerate before electron-builder (CI bypasses
+      # npm run dist:mac / predist:mac by invoking electron-builder directly).
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Confirm macOS icon assets exist
+        run: |
+          test -f public/icon.icns
+          test -f public/icon.png
+          ls -la public/icon.*
+
       - name: Package macOS DMGs (arm64 + x64, ad-hoc signed, no notarization)
         env:
           # Prevent partial signing from stray CI keychain identities.
@@ -134,6 +145,20 @@ jobs:
 
       - name: Freeze Colony Auto Count sidecar (Windows)
         run: npm run build:colony-backend
+
+      # Icons are gitignored (public/icon.ico etc.). CI invokes electron-builder
+      # directly, so npm's predist:win lifecycle never runs — generate explicitly.
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Confirm Windows icon.ico exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la public/
+          test -f public/icon.ico
+          # electron-builder resolves win.icon relative to project dir (forward slashes OK on Windows)
+          node -e "const fs=require('fs'); const p='public/icon.ico'; if(!fs.existsSync(p)) process.exit(1); console.log('icon.ico OK', fs.statSync(p).size, 'bytes')"
 
       - name: Package Windows installer
         run: npx electron-builder --win --publish never
