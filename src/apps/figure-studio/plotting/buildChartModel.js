@@ -63,7 +63,7 @@ export function buildChartModel(dataset, plot) {
         continue;
       }
       row[g] = mean(ys);
-      let err = 0;
+      let err;
       if (plot.errorMode === 'custom') {
         const customs = items.map((i) => i.errorCustom).filter((n) => n != null);
         err = customs.length ? mean(customs) : 0;

@@ -52,12 +52,12 @@ async function main() {
 
   mkdirSync(BACKEND, { recursive: true });
 
-  const { python, pip, pythonRel, pipRel } = resolveVenvPaths(BACKEND);
+  const { python, pythonRel, pipRel } = resolveVenvPaths(BACKEND);
   const sysPython = getSystemPython();
 
   console.log(`Platform: ${process.platform}`);
   console.log(`Venv python: ${pythonRel}`);
-  console.log(`Venv pip:    ${pipRel}`);
+  console.log(`Venv pip:    ${pipRel} (installs via python -m pip)`);
 
   if (!existsSync(python)) {
     console.log('\nCreating virtualenv…');
@@ -69,19 +69,12 @@ async function main() {
   if (!existsSync(python)) {
     throw new Error(`Expected venv python at ${python} after creation.`);
   }
-  if (!existsSync(pip)) {
-    // Some venvs only ship ensurepip — fall back to python -m pip
-    console.log(`pip executable missing at ${pip}; using python -m pip`);
-  }
 
+  // Always use `python -m pip` (not pip.exe). On Windows, `pip.exe install
+  // --upgrade pip` fails with "To modify pip, please run … python.exe -m pip".
   console.log('\nInstalling requirements…');
-  if (existsSync(pip)) {
-    await run(pip, ['install', '--upgrade', 'pip'], { cwd: BACKEND });
-    await run(pip, ['install', '-r', 'requirements.txt'], { cwd: BACKEND });
-  } else {
-    await run(python, ['-m', 'pip', 'install', '--upgrade', 'pip'], { cwd: BACKEND });
-    await run(python, ['-m', 'pip', 'install', '-r', 'requirements.txt'], { cwd: BACKEND });
-  }
+  await run(python, ['-m', 'pip', 'install', '--upgrade', 'pip'], { cwd: BACKEND });
+  await run(python, ['-m', 'pip', 'install', '-r', 'requirements.txt'], { cwd: BACKEND });
 
   console.log('\nVerifying imports…');
   const check = await verifyPythonEnvironment(python);

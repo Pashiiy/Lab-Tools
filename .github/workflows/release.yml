@@ -53,14 +53,43 @@ jobs:
       - name: Validate lockfile is in sync
         run: npm run validate:lock
 
+      - name: Setup Python (arm64)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: arm64
+
       - name: Build renderer (Vite)
         run: npm run build
+
+      - name: Freeze Colony Auto Count sidecar (arm64)
+        run: npm run build:colony-backend -- --arch arm64
+
+      - name: Setup Python (x64 / Rosetta)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+
+      - name: Freeze Colony Auto Count sidecar (x64)
+        run: npm run build:colony-backend -- --arch x64
+
+      # Icons are gitignored — must regenerate before electron-builder (CI bypasses
+      # npm run dist:mac / predist:mac by invoking electron-builder directly).
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Confirm macOS icon assets exist
+        run: |
+          test -f public/icon.icns
+          test -f public/icon.png
+          ls -la public/icon.*
 
       - name: Package macOS DMGs (arm64 + x64, ad-hoc signed, no notarization)
         env:
           # Prevent partial signing from stray CI keychain identities.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: npm run dist:mac
+        run: CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --arm64 --x64 --publish never
 
       - name: Verify app signatures (fails the release on a broken / missing bundle)
         run: npm run verify:mac
@@ -106,11 +135,33 @@ jobs:
       - name: Validate lockfile is in sync
         run: npm run validate:lock
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Build renderer (Vite)
         run: npm run build
 
+      - name: Freeze Colony Auto Count sidecar (Windows)
+        run: npm run build:colony-backend
+
+      # Icons are gitignored (public/icon.ico etc.). CI invokes electron-builder
+      # directly, so npm's predist:win lifecycle never runs — generate explicitly.
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Confirm Windows icon.ico exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la public/
+          test -f public/icon.ico
+          # electron-builder resolves win.icon relative to project dir (forward slashes OK on Windows)
+          node -e "const fs=require('fs'); const p='public/icon.ico'; if(!fs.existsSync(p)) process.exit(1); console.log('icon.ico OK', fs.statSync(p).size, 'bytes')"
+
       - name: Package Windows installer
-        run: npm run dist:win
+        run: npx electron-builder --win --publish never
 
       - name: Verify Windows installer exists
         shell: bash

@@ -7,7 +7,6 @@ import {
 } from '../utils/session';
 import { loadImageUniversal } from '../../../shared/image/imageLoader';
 import { trackRecentFile } from '../../../shared/persistence/trackRecentFile.js';
-import { useOpenFileListener } from '../../../shared/persistence/useOpenFileListener.js';
 
 export const DEFAULT_GEL_ADJUSTMENTS = {
   brightness: 100,

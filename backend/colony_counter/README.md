@@ -4,7 +4,11 @@ Classical OpenCV colony detection for Benchy. Runs as a local FastAPI service, s
 
 **Bias:** under-count rather than over-count. A user **mask is required** — nothing outside the mask is analyzed.
 
-## Setup
+## Packaged app (end users)
+
+Release installers ship a **frozen** `colony_counter_service` binary (PyInstaller). No Python, venv, or `pip install` is required on the user’s machine. Electron spawns that binary when `app.isPackaged` is true.
+
+## Dev setup (source + venv)
 
 From the Benchy repo root (recommended — works on macOS, Linux, and Windows):
 
@@ -18,8 +22,19 @@ Manual:
 cd backend/colony_counter
 python3 -m venv .venv          # Windows: python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-# Windows without activate: .venv\Scripts\pip.exe install -r requirements.txt
+python -m pip install -r requirements.txt
+# Windows without activate: .venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+## Freeze for packaging
+
+Produces `dist-bin/{mac|win|linux}-{arch}/colony_counter_service…` for electron-builder `extraResources`:
+
+```bash
+npm run build:colony-backend              # host OS + arch
+npm run build:colony-backend:all-mac      # arm64 + x64 on macOS
+npm run build:colony-backend -- --mode onefile
+npm run build:colony-backend -- --time-compare   # measure onedir vs onefile cold start
 ```
 
 ## Standalone (debug)
@@ -65,7 +80,13 @@ curl -s -X POST http://127.0.0.1:8765/api/suggest-dish \
 
 Response: `count`, `individuallyDetected`, `countByType`, `colonies[]`. `clusters[]` / `estimatedFromClusters` are always empty (fused-cluster fallback removed).
 
-Python runtime is **not** bundled in the installer for MVP; install the venv on the machine running Benchy desktop.
+## Packaging notes
+
+Release installers include the frozen `colony_counter_service` binary only (no `.venv`, no `requirements.txt` on the end-user machine). Rebuild with `npm run build:colony-backend` before `dist:mac` / `dist:win`.
+
+**Signing / Gatekeeper:** current CI uses ad-hoc Mac signing (`identity: "-"`, `notarize: false`). For public distribution, sign the outer `.app` **and** the nested sidecar with a Developer ID (see `scripts/after-pack-sign-colony.cjs` + `build/entitlements.mac.plist` network entitlements), then notarize the whole app so Gatekeeper accepts the nested binary. Windows: sign the NSIS installer (and ideally the sidecar `.exe`) with the same cert used for the app when `CSC_*` secrets are configured.
+
+**Updates:** there is no electron-updater — users install a new GitHub Release DMG/EXE, which replaces `Resources/colony_counter/` along with the rest of the app.
 
 ## Accuracy harness
 

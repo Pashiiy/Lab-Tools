@@ -92,19 +92,12 @@ function resolvePythonBin(backendDir, platform = process.platform) {
  */
 function getSetupCommand(backendDir = 'backend/colony_counter', platform = process.platform) {
   const sys = getSystemPython(platform);
-  const { pythonRel, pipRel } = resolveVenvPaths(backendDir, platform);
-  if (platform === 'win32') {
-    return (
-      `cd ${backendDir}\n` +
-      `${sys} -m venv .venv\n` +
-      `${pipRel} install -r requirements.txt\n\n` +
-      `Or from the repo root: npm run setup:colony`
-    );
-  }
+  const { pythonRel } = resolveVenvPaths(backendDir, platform);
+  // Prefer `python -m pip` on all platforms — required on Windows to upgrade pip.
   return (
     `cd ${backendDir}\n` +
     `${sys} -m venv .venv\n` +
-    `${pipRel} install -r requirements.txt\n\n` +
+    `${pythonRel} -m pip install -r requirements.txt\n\n` +
     `Or from the repo root: npm run setup:colony`
   );
 }

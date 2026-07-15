@@ -41,12 +41,18 @@ async function testPathResolution() {
     if (platform === 'win32') {
       assert(p.pythonRel === '.venv\\Scripts\\python.exe', `win pythonRel: ${p.pythonRel}`);
       assert(p.pipRel === '.venv\\Scripts\\pip.exe', `win pipRel: ${p.pipRel}`);
-      assert(getSetupCommand(BACKEND, 'win32').includes('.venv\\Scripts\\pip.exe'), 'win setup mentions Scripts\\pip');
+      assert(
+        getSetupCommand(BACKEND, 'win32').includes('.venv\\Scripts\\python.exe -m pip'),
+        'win setup uses python -m pip'
+      );
       assert(!getSetupCommand(BACKEND, 'win32').includes('.venv/bin/'), 'win setup must not use bin/');
     } else {
       assert(p.pythonRel === '.venv/bin/python', `${platform} pythonRel: ${p.pythonRel}`);
       assert(p.pipRel === '.venv/bin/pip', `${platform} pipRel: ${p.pipRel}`);
-      assert(getSetupCommand(BACKEND, platform).includes('.venv/bin/pip'), `${platform} setup uses bin/pip`);
+      assert(
+        getSetupCommand(BACKEND, platform).includes('.venv/bin/python -m pip'),
+        `${platform} setup uses python -m pip`
+      );
     }
     console.log(`  ✓ ${platform}: ${p.pythonRel} / ${p.pipRel}`);
   }
@@ -94,9 +100,9 @@ async function testCleanVenvAndSidecar() {
       assert(msg.includes('Auto Count backend dependencies are missing'), 'error headline');
       assert(
         process.platform === 'win32'
-          ? msg.includes('Scripts')
-          : msg.includes('.venv/bin/pip'),
-        'error includes platform-correct pip path'
+          ? msg.includes('Scripts') && msg.includes('python.exe -m pip')
+          : msg.includes('.venv/bin/python -m pip'),
+        'error includes platform-correct python -m pip path'
       );
     }
 
@@ -142,7 +148,10 @@ async function testMacIntelPathsIfPossible() {
   // Both Apple Silicon and Intel Mac use the Unix bin/ layout — only the
   // Python arch differs. Path helper is identical for darwin regardless of arch.
   const arm = resolveVenvPaths(BACKEND, 'darwin');
-  assert(arm.pythonRel.includes(join('bin', 'python')), 'darwin uses bin/python');
+  // Use a posix segment check — path.join() on Windows would produce "bin\\python"
+  // and falsely fail this cross-platform assert on windows-latest.
+  assert(arm.pythonRel === '.venv/bin/python', `darwin uses bin/python, got ${arm.pythonRel}`);
+  assert(arm.pipRel === '.venv/bin/pip', `darwin uses bin/pip, got ${arm.pipRel}`);
   console.log(`  ✓ darwin layout (arm64 and x64 Macs): ${arm.pythonRel}`);
   if (process.platform === 'darwin' && process.arch === 'arm64') {
     // Optional: confirm Rosetta can run an x86_64 python for a separate venv smoke.

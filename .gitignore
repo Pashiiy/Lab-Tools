@@ -34,5 +34,9 @@ Untitled
 
 # Python colony auto-count service
 backend/colony_counter/.venv/
+backend/colony_counter/.venv-x86/
+backend/colony_counter/dist-bin/
+backend/colony_counter/build/
+backend/colony_counter/*.spec.bak
 __pycache__/
 *.pyc

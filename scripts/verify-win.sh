@@ -65,12 +65,13 @@ for exe in "${EXES[@]}"; do
   fi
   echo "OK: installer present (${size} bytes)."
 
-  # Unpackaged dir (if present) should include the colony_counter sidecar source.
-  unpacked="$ROOT/release/win-unpacked/resources/colony_counter/main.py"
-  if [[ -f "$unpacked" ]]; then
-    echo "OK: colony_counter sidecar present in win-unpacked resources."
+  # Unpackaged dir (if present) should include the frozen colony sidecar.
+  unpacked_dir="$ROOT/release/win-unpacked/resources/colony_counter"
+  if [[ -f "$unpacked_dir/colony_counter_service/colony_counter_service.exe" ]] || \
+     [[ -f "$unpacked_dir/colony_counter_service.exe" ]]; then
+    echo "OK: colony_counter_service present in win-unpacked resources."
   else
-    echo "WARN: win-unpacked colony_counter/main.py not found (may already be cleaned); installer size check still passed."
+    echo "WARN: win-unpacked colony_counter_service not found (may already be cleaned); installer size check still passed."
   fi
   echo
 done

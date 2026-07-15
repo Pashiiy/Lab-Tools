@@ -64,6 +64,7 @@ export function useRoiHistory(createInitial) {
     replace,
     undo,
     redo,
+    reset,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
   };

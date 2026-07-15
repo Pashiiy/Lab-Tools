@@ -24,7 +24,6 @@ export default function SummaryTable({
   hasDilutionData = true,
   t0Timepoint,
   timepoints,
-  chartView,
   ratioNumerator,
   ratioDenominator,
   showRatioRows,
@@ -41,14 +40,17 @@ export default function SummaryTable({
         const lastRow = normalizedData.find(
           (d) => d.timepoint === lastTp && d.target === target && d.dilution === dilution
         );
+        // Prefer the actual T0 normalized value (usually ~100) so missing T0
+        // data shows as "—" instead of a hard-coded 100%.
+        const t0Pct = t0Row?.normalizedPercent ?? null;
         const lastPct = lastRow?.normalizedPercent ?? null;
-        const change = lastPct != null ? lastPct - 100 : null;
+        const change = t0Pct != null && lastPct != null ? lastPct - t0Pct : null;
 
         result.push({
           key: `${target}-${dilution}`,
           label: target,
           dilution: dilutionLabel(dilution),
-          t0Pct: 100,
+          t0Pct,
           lastPct,
           change,
           isRatio: false,
@@ -112,7 +114,11 @@ export default function SummaryTable({
                 <td>{row.label}</td>
                 {hasDilutionData && <td className="qi-mono">{row.dilution}</td>}
                 <td className="qi-mono">
-                  {row.isRatio ? row.t0Pct : `${row.t0Pct.toFixed(1)}%`}
+                  {row.isRatio
+                    ? row.t0Pct
+                    : row.t0Pct == null
+                      ? '—'
+                      : `${row.t0Pct.toFixed(1)}%`}
                 </td>
                 <td className="qi-mono">
                   {row.lastPct == null

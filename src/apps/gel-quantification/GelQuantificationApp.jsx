@@ -24,6 +24,14 @@ const GEL_TABS = [
 
 export default function GelQuantificationApp({ instanceId, isActive = true, initialState = null }) {
   const gq = useGelQuantification(initialState);
+  const {
+    undo,
+    redo,
+    goToPrevGel,
+    goToNextGel,
+    activeTab,
+    gels,
+  } = gq;
 
   useToolSnapshot(instanceId, 'gel-quantification', gq.getSnapshot);
 
@@ -38,35 +46,27 @@ export default function GelQuantificationApp({ instanceId, isActive = true, init
       if (mod) {
         if (e.key === 'z' && !e.shiftKey) {
           e.preventDefault();
-          gq.undo();
+          undo();
         } else if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) {
           e.preventDefault();
-          gq.redo();
+          redo();
         }
         return;
       }
 
-      if (gq.activeTab !== 'image' || gq.gels.length < 2) return;
+      if (activeTab !== 'image' || gels.length < 2) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        gq.goToPrevGel();
+        goToPrevGel();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        gq.goToNextGel();
+        goToNextGel();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [
-    isActive,
-    gq.activeTab,
-    gq.gels.length,
-    gq.undo,
-    gq.redo,
-    gq.goToPrevGel,
-    gq.goToNextGel,
-  ]);
+  }, [isActive, activeTab, gels.length, undo, redo, goToPrevGel, goToNextGel]);
 
   const handleSelectGelFromTable = (gelId) => {
     if (gelId && gelId !== gq.activeGelId) {
@@ -93,7 +93,6 @@ export default function GelQuantificationApp({ instanceId, isActive = true, init
           roiTemplate={gq.roiTemplate}
           pairCount={gq.pairs.length}
           completePairCount={completePairCount}
-          totalCompletePairs={gq.totalCompletePairs}
           strainName={gq.strainName}
           description={gq.description}
           onAddGel={gq.addGelFromFile}
