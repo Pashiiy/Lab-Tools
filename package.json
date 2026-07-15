@@ -28,6 +28,8 @@
     "setup:colony": "node scripts/setup-colony-backend.mjs",
     "colony-api": "node scripts/run-colony-api.mjs",
     "verify:colony-venv": "node scripts/verify-colony-venv.mjs",
+    "build:colony-backend": "node scripts/build-colony-backend.mjs",
+    "build:colony-backend:all-mac": "node scripts/build-colony-backend.mjs --all-mac-archs",
     "preview": "vite preview",
     "generate-icons": "node scripts/generate-icons.mjs",
     "predist": "npm run generate-icons",
@@ -35,9 +37,9 @@
     "predist:mac": "npm run generate-icons",
     "predist:all": "npm run generate-icons",
     "dist": "npm run build && electron-builder --publish never",
-    "dist:win": "electron-builder --win --publish never",
-    "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --x64 --publish never",
-    "dist:all": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --x64 --win --publish never",
+    "dist:win": "npm run build:colony-backend && electron-builder --win --publish never",
+    "dist:mac": "npm run build:colony-backend:all-mac && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --x64 --publish never",
+    "dist:all": "npm run build && npm run build:colony-backend && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --x64 --win --publish never",
     "verify:mac": "bash scripts/verify-mac.sh",
     "verify:win": "bash scripts/verify-win.sh",
     "validate:lock": "node scripts/validate-lockfile.mjs",
@@ -84,6 +86,7 @@
     "appId": "com.benchy.app",
     "productName": "Benchy",
     "asar": true,
+    "afterPack": "scripts/after-pack-sign-colony.cjs",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -95,14 +98,11 @@
     ],
     "extraResources": [
       {
-        "from": "backend/colony_counter",
+        "from": "backend/colony_counter/dist-bin/${os}-${arch}/",
         "to": "colony_counter",
         "filter": [
           "**/*",
-          "!.venv",
-          "!.venv/**",
-          "!**/__pycache__",
-          "!**/__pycache__/**"
+          "!build-meta.json"
         ]
       }
     ],

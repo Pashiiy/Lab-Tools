@@ -36,9 +36,20 @@ APPS=()
 if [[ -n "${1:-}" ]]; then
   APPS+=("$1")
 else
+  # Prefer arch-specific electron-builder outputs (mac-arm64 / mac-x64).
+  # Ignore stale release/mac bundles from older packaging layouts.
   while IFS= read -r p; do
     [[ -n "$p" ]] && APPS+=("$p")
-  done < <(find "$ROOT/release" -maxdepth 3 -name "$APP_NAME" -type d 2>/dev/null | sort)
+  done < <(
+    find "$ROOT/release" -maxdepth 3 -name "$APP_NAME" -type d 2>/dev/null \
+      | grep -E '/release/mac-(arm64|x64)/' \
+      | sort
+  )
+  if [[ ${#APPS[@]} -eq 0 ]]; then
+    while IFS= read -r p; do
+      [[ -n "$p" ]] && APPS+=("$p")
+    done < <(find "$ROOT/release" -maxdepth 3 -name "$APP_NAME" -type d 2>/dev/null | sort)
+  fi
 fi
 
 if [[ ${#APPS[@]} -eq 0 ]]; then
@@ -63,13 +74,39 @@ verify_one() {
   echo "Verifying: $APP_PATH"
   echo "=============================================================="
 
-  # Confirm colony_counter sidecar source was packaged into Resources.
-  local sidecar="${APP_PATH}/Contents/Resources/colony_counter/main.py"
-  if [[ ! -f "$sidecar" ]]; then
-    echo "FAIL: colony_counter sidecar missing at Contents/Resources/colony_counter/main.py" >&2
+  # Confirm frozen colony sidecar was packaged into Resources (no Python source).
+  local sidecar_dir="${APP_PATH}/Contents/Resources/colony_counter"
+  local sidecar_bin=""
+  if [[ -x "${sidecar_dir}/colony_counter_service/colony_counter_service" ]]; then
+    sidecar_bin="${sidecar_dir}/colony_counter_service/colony_counter_service"
+  elif [[ -x "${sidecar_dir}/colony_counter_service" ]]; then
+    sidecar_bin="${sidecar_dir}/colony_counter_service"
+  fi
+  if [[ -z "$sidecar_bin" ]]; then
+    echo "FAIL: bundled colony_counter_service missing under Contents/Resources/colony_counter/" >&2
+    echo "      (expected onedir …/colony_counter_service/colony_counter_service or onefile …/colony_counter_service)" >&2
     return 1
   fi
-  echo "OK: colony_counter sidecar present (main.py)."
+  echo "OK: colony_counter sidecar present (${sidecar_bin#$APP_PATH/})."
+  # Framework symlinks must be relative or codesign will fail with "unsealed contents".
+  local fw="${sidecar_dir}/colony_counter_service/_internal/Python.framework"
+  if [[ -d "$fw" ]]; then
+    local current
+    current="$(readlink "$fw/Versions/Current" 2>/dev/null || true)"
+    if [[ -z "$current" || "$current" = /* ]]; then
+      echo "FAIL: Python.framework Versions/Current must be a relative symlink (got: ${current:-missing})" >&2
+      return 1
+    fi
+    if ! codesign --verify --deep --strict "$fw" 2>/dev/null; then
+      echo "FAIL: Python.framework failed codesign --verify --deep --strict" >&2
+      return 1
+    fi
+    echo "OK: Python.framework layout + signature look good (Current -> ${current})."
+  fi
+  # Source tree must NOT be required in the packaged app.
+  if [[ -f "${sidecar_dir}/main.py" ]]; then
+    echo "WARN: main.py still present in Resources — prefer shipping only the frozen binary."
+  fi
 
   # 1) Strict signature integrity check. Any non-zero exit is a hard FAIL.
   echo

@@ -6,7 +6,7 @@
 - **npm** `>=11` (repo pins `packageManager: npm@11.6.2`)
 - macOS or Windows for Electron packaging; web/PWA works on any OS with Node
 
-- **Python** `>=3.10` (optional — only for Colony Auto Count on desktop)
+- **Python** `>=3.10` (dev only — packaged apps ship a frozen Colony Auto Count binary)
 
 ## Setup
 
@@ -17,7 +17,9 @@ npm install
 
 ### Colony Auto Count (desktop)
 
-Cross-platform (recommended) — creates `.venv` with the correct `bin/` (macOS/Linux) or `Scripts/` (Windows) layout and installs deps:
+**End users / packaged app:** no Python setup. Installers include `colony_counter_service`.
+
+**Local development** — creates `.venv` with the correct `bin/` (macOS/Linux) or `Scripts/` (Windows) layout:
 
 ```bash
 npm run setup:colony
@@ -37,7 +39,7 @@ python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Electron starts this service automatically (and checks that `uvicorn` is importable before spawn). Standalone: `npm run colony-api` then `curl` as in `backend/colony_counter/README.md`.
+Electron in **dev** starts the service from the venv (and checks that `uvicorn` is importable before spawn). In the **packaged** app it spawns the frozen binary. Standalone: `npm run colony-api` then `curl` as in `backend/colony_counter/README.md`.
 
 No `.env` file is required for normal development. Theme preference is stored in `localStorage` (`lab-tools-theme`).
 
@@ -55,7 +57,8 @@ No `.env` file is required for normal development. Theme preference is stored in
 | Command | What it does |
 |---------|----------------|
 | `npm run build` | Vite production build → `dist/` (also used by Vercel) |
-| `npm run dist` / `dist:mac` / `dist:win` / `dist:all` | electron-builder packaging (`dist:mac` builds arm64 + x64 DMGs) |
+| `npm run build:colony-backend` | Freeze Colony Auto Count with PyInstaller → `backend/colony_counter/dist-bin/` |
+| `npm run dist` / `dist:mac` / `dist:win` / `dist:all` | Freeze sidecar (when needed) + electron-builder (`dist:mac` builds arm64 + x64 DMGs) |
 | `npm run electron:build:mac` / `:win` / `:all` | build + package |
 | `npm run generate-icons` | Icon assets for packaging |
 | `npm run verify:mac` | Post-build mac signature check (all `Benchy.app` under `release/`) |
@@ -99,8 +102,22 @@ No `VITE_*` secrets are required.
 ## Release (Electron)
 
 1. `npm run release` bumps version and creates a git tag.
-2. Tag push triggers `.github/workflows/release.yml` → mac DMG + Windows NSIS on GitHub Releases.
+2. Tag push triggers `.github/workflows/release.yml` → freezes Colony Auto Count (PyInstaller) → mac DMG (arm64 + x64) + Windows NSIS on GitHub Releases.
 3. Do not ship installers from the regular CI lint/build workflow.
+
+## Signing & notarization (macOS)
+
+The colony sidecar is a PyInstaller onedir bundle with `Python.framework`. electron-builder’s outer sign fails if that framework’s symlinks were flattened to absolute paths (Node `cpSync` does this). The pipeline:
+
+1. `build:colony-backend` copies with `cp -a` / `rsync -a` (relative symlinks preserved).
+2. `afterPack` (`scripts/after-pack-sign-colony.cjs`) restores the framework layout and codesigns **bottom-up** (dylibs → `Python.framework` → `colony_counter_service`) using the same identity as the app (`mac.identity`, or `CSC_NAME` / `CSC_IDENTITY`).
+
+Current CI still uses **ad-hoc** signing (`identity: "-"`, `notarize: false`). Gatekeeper (`spctl`) will reject until you:
+
+1. Set a real Developer ID (`CSC_NAME` / `CSC_LINK` / keychain identity) and set `mac.identity` accordingly.
+2. Set `hardenedRuntime: true` and keep `build/entitlements.mac.plist` (already includes network client/server for the local sidecar).
+3. Enable notarization (`notarize: true` with Apple ID / API key env vars, or `xcrun notarytool submit` on the DMG).
+4. Confirm the notarization log has no warnings for `colony_counter_service` / `Python.framework`.
 
 ## Web deploy (Vercel)
 

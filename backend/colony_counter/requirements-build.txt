@@ -1,0 +1,3 @@
+# Build-only deps for freezing the Colony Auto Count sidecar.
+# Runtime deps remain in requirements.txt.
+pyinstaller>=6.11.0,<7

@@ -18,7 +18,7 @@
 - New Figure Generator (rebuild from scratch)
 - Broader qPCR/endpoint automated tests
 - Research Mode: analysis history, multi-experiment UX polish, conflict UI beyond last-write-wins
-- Bundle Python runtime with Electron installer for Auto Count
+- ~~Bundle Python runtime with Electron installer for Auto Count~~ (PyInstaller `colony_counter_service` via `npm run build:colony-backend`)
 
 ## Do not change without approval
 

@@ -1,7 +1,10 @@
 /**
  * Local FastAPI colony-counter service lifecycle for Electron.
- * Uses backend/colony_counter/.venv when present (platform-correct Scripts/ or bin/),
- * else system python — after verifying required packages import.
+ *
+ * Packaged app: spawn the PyInstaller-frozen colony_counter_service binary
+ * shipped under process.resourcesPath/colony_counter/ (no Python required).
+ *
+ * Dev (unpackaged): spawn venv / system Python + uvicorn as before.
  */
 const { spawn } = require('child_process');
 const { app } = require('electron');
@@ -16,11 +19,45 @@ const {
   getSetupCommand,
 } = require('./colonyVenv.cjs');
 
+function isPackaged() {
+  return Boolean(app?.isPackaged);
+}
+
 function getBackendDir() {
-  if (app?.isPackaged) {
+  if (isPackaged()) {
     return path.join(process.resourcesPath, 'colony_counter');
   }
   return path.join(__dirname, '../backend/colony_counter');
+}
+
+/** Absolute path to the frozen sidecar executable, or null if not present. */
+function resolveBundledServicePath(backendDir = getBackendDir()) {
+  const exeName =
+    process.platform === 'win32' ? 'colony_counter_service.exe' : 'colony_counter_service';
+  // onedir layout (preferred): …/colony_counter_service/colony_counter_service[.exe]
+  const onedir = path.join(backendDir, 'colony_counter_service', exeName);
+  if (fs.existsSync(onedir)) return onedir;
+  // onefile layout: …/colony_counter_service[.exe]
+  const onefile = path.join(backendDir, exeName);
+  if (fs.existsSync(onefile)) return onefile;
+  return null;
+}
+
+function bundledMissingError(backendDir) {
+  return (
+    'Colony Auto Count backend executable is missing from this installation.\n\n' +
+    `Expected a bundled colony_counter_service binary under:\n  ${backendDir}\n\n` +
+    'Reinstall Benchy from a complete installer, or report this as a packaging bug.'
+  );
+}
+
+function bundledLaunchError(detail) {
+  return (
+    'Colony Auto Count backend failed to launch.\n\n' +
+    'The bundled sidecar executable could not be started. ' +
+    'This is not a missing-Python / pip-setup problem — the app ships a frozen binary.\n\n' +
+    (detail ? `Details:\n${detail}` : '')
+  );
 }
 
 let child = null;
@@ -76,6 +113,55 @@ async function waitForHealth(p, attempts = 40) {
   return false;
 }
 
+/**
+ * @returns {Promise<{ command: string, args: string[], cwd: string, kind: 'bundled'|'dev' }>}
+ */
+async function resolveSpawnPlan(backendDir) {
+  if (isPackaged()) {
+    const exe = resolveBundledServicePath(backendDir);
+    if (!exe) throw new Error(bundledMissingError(backendDir));
+    const p = await findFreePort();
+    return {
+      kind: 'bundled',
+      command: exe,
+      args: ['--host', '127.0.0.1', '--port', String(p), '--log-level', 'warning'],
+      cwd: path.dirname(exe),
+      port: p,
+    };
+  }
+
+  if (!fs.existsSync(path.join(backendDir, 'main.py'))) {
+    throw new Error(
+      'Colony Auto Count backend not found. Expected backend/colony_counter/main.py'
+    );
+  }
+
+  const python = resolvePythonBin(backendDir);
+  const preflight = await verifyPythonEnvironment(python);
+  if (!preflight.ok) {
+    throw new Error(missingDepsError(backendDir, preflight.reason));
+  }
+
+  const p = await findFreePort();
+  return {
+    kind: 'dev',
+    command: python,
+    args: [
+      '-m',
+      'uvicorn',
+      'main:app',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(p),
+      '--log-level',
+      'warning',
+    ],
+    cwd: backendDir,
+    port: p,
+  };
+}
+
 async function ensureColonyService() {
   if (port && child && !child.killed) {
     try {
@@ -90,33 +176,11 @@ async function ensureColonyService() {
 
   starting = (async () => {
     const backendDir = getBackendDir();
-    if (!fs.existsSync(path.join(backendDir, 'main.py'))) {
-      throw new Error(
-        'Colony Auto Count backend not found. Expected backend/colony_counter/main.py'
-      );
-    }
+    const plan = await resolveSpawnPlan(backendDir);
+    const p = plan.port;
 
-    const python = resolvePythonBin(backendDir);
-    const preflight = await verifyPythonEnvironment(python);
-    if (!preflight.ok) {
-      throw new Error(missingDepsError(backendDir, preflight.reason));
-    }
-
-    const p = await findFreePort();
-    const args = [
-      '-m',
-      'uvicorn',
-      'main:app',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(p),
-      '--log-level',
-      'warning',
-    ];
-
-    child = spawn(python, args, {
-      cwd: backendDir,
+    child = spawn(plan.command, plan.args, {
+      cwd: plan.cwd,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -141,12 +205,17 @@ async function ensureColonyService() {
       port = null;
     });
 
-    const ok = await waitForHealth(p, 60);
+    // Frozen onefile can unpack slowly on first launch — allow more attempts.
+    const attempts = plan.kind === 'bundled' ? 120 : 60;
+    const ok = await waitForHealth(p, attempts);
     if (!ok) {
       const hint =
         [stderrBuf.trim(), stdoutBuf.trim()].filter(Boolean).join('\n') ||
-        `uvicorn failed to start (exit=${exitCode ?? 'still running'})`;
+        `service failed to start (exit=${exitCode ?? 'still running'})`;
       stopColonyService();
+      if (plan.kind === 'bundled') {
+        throw new Error(bundledLaunchError(hint));
+      }
       throw new Error(
         `Colony Auto Count service failed to start.\n\n` +
           `${getSetupCommand(backendDir)}\n\n${hint}`
@@ -315,7 +384,9 @@ function saveGroundTruthFixture(payload) {
     ? density
     : 'moderate';
 
-  const fixturesRoot = path.join(getBackendDir(), 'tests', 'fixtures');
+  const fixturesRoot = isPackaged()
+    ? path.join(app.getPath('userData'), 'colony_counter_fixtures')
+    : path.join(getBackendDir(), 'tests', 'fixtures');
   const folderName = sanitizeFixtureName(plateName);
   const dir = path.join(fixturesRoot, folderName);
   fs.mkdirSync(dir, { recursive: true });
@@ -349,4 +420,6 @@ module.exports = {
   suggestDish,
   saveGroundTruthFixture,
   getBackendDir,
+  resolveBundledServicePath,
+  isPackaged,
 };

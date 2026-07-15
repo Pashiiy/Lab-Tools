@@ -92,3 +92,73 @@ jobs:
       # local npm run setup:colony and Electron spawn.
       - name: Verify colony venv + sidecar
         run: npm run verify:colony-venv
+
+  # Freeze the packaged sidecar (PyInstaller). Dev still uses colony-venv above.
+  colony-freeze:
+    name: Colony freeze (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pin npm to packageManager version
+        shell: bash
+        run: |
+          NPM_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")"
+          npm i -g "npm@${NPM_VERSION}"
+
+      - name: Install npm dependencies
+        run: npm ci
+        env:
+          HUSKY: '0'
+
+      - name: Freeze colony_counter_service
+        run: npm run build:colony-backend
+
+      - name: Smoke-test frozen binary (/health)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$PWD/backend/colony_counter/dist-bin"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            EXE="$ROOT/win-x64/colony_counter_service/colony_counter_service.exe"
+            [[ -f "$EXE" ]] || EXE="$ROOT/win-x64/colony_counter_service.exe"
+          else
+            ARCH="$(uname -m)"
+            if [[ "$ARCH" == "arm64" ]]; then
+              KEY=mac-arm64
+            else
+              KEY=mac-x64
+            fi
+            EXE="$ROOT/$KEY/colony_counter_service/colony_counter_service"
+            [[ -x "$EXE" ]] || EXE="$ROOT/$KEY/colony_counter_service"
+          fi
+          test -e "$EXE"
+          PORT=18765
+          "$EXE" --host 127.0.0.1 --port "$PORT" --log-level warning &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 90); do
+            if curl -sf "http://127.0.0.1:$PORT/health" | grep -q ok; then
+              echo "OK: frozen sidecar healthy ($EXE)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "FAIL: frozen sidecar did not become healthy"
+          exit 1
