@@ -162,3 +162,58 @@ jobs:
           done
           echo "FAIL: frozen sidecar did not become healthy"
           exit 1
+
+  # Catch the release-yml Windows failure mode: gitignored icons + electron-builder
+  # invoked without npm predist:* — generate icons, then build NSIS.
+  win-installer:
+    name: Windows NSIS (icons + pack)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pin npm to packageManager version
+        shell: bash
+        run: |
+          NPM_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")"
+          npm i -g "npm@${NPM_VERSION}"
+
+      - name: Install npm dependencies
+        run: npm ci
+        env:
+          HUSKY: '0'
+
+      - name: Build renderer (Vite)
+        run: npm run build
+
+      - name: Freeze Colony Auto Count sidecar
+        run: npm run build:colony-backend
+
+      - name: Generate platform icons
+        run: npm run generate-icons
+
+      - name: Confirm public/icon.ico exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la public/
+          test -f public/icon.ico
+          node -e "const fs=require('fs'); console.log('icon.ico', fs.statSync('public/icon.ico').size)"
+
+      - name: Package Windows NSIS installer
+        run: npx electron-builder --win --publish never
+
+      - name: Verify installer artifact
+        shell: bash
+        run: npm run verify:win
